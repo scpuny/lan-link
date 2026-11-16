@@ -5,6 +5,7 @@
 //   transferring  —— 传输中（main-transferring.png）
 import { computed, ref } from 'vue'
 import Icon from '../../common/Icon.vue'
+import EmptyState from '../../common/EmptyState.vue'
 import { useUi } from '../../../composables/useUi'
 import { SEND_LOCKED as L } from '../../../data/send'
 import type { SendFile } from '../../../types/invite'
@@ -200,6 +201,9 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
                 <td><span class="ll-tag ll-tag--plain">待发送</span></td>
                 <td><button class="row-x" title="移除" @click="removeSendFile(f.pathOrName)"><Icon name="close" :size="12" /></button></td>
               </tr>
+              <tr v-if="!displayFiles.length">
+                <td colspan="5" class="empty-row"><EmptyState description="暂无数据" /></td>
+              </tr>
             </tbody>
           </table>
           <div class="file-foot">
@@ -280,6 +284,9 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
                 <td><span class="ll-tag ll-tag--plain">待发送</span></td>
                 <td><button class="row-x" title="移除" @click="removeSendFile(f.pathOrName)"><Icon name="close" :size="12" /></button></td>
               </tr>
+              <tr v-if="!displayFiles.length">
+                <td colspan="5" class="empty-row"><EmptyState description="暂无数据" /></td>
+              </tr>
             </tbody>
           </table>
           <div class="file-foot locked-foot">
@@ -318,6 +325,9 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
                     @click="openDialog(d.primary ? 'connect' : 'generate')"
                   >{{ d.action }}</button>
                 </td>
+              </tr>
+              <tr v-if="!displayDevices.length">
+                <td colspan="4" class="empty-row"><EmptyState description="暂无数据" /></td>
               </tr>
             </tbody>
           </table>
@@ -475,6 +485,7 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
 .file-table td:nth-child(4),
 .file-table td:nth-child(5) { white-space: nowrap; }
 .file-table td:nth-child(1) { color: var(--ll-color-text); }
+.empty-row { padding: 0; }
 .file-name { display: flex; align-items: center; gap: var(--ll-space-2); min-width: 0; }
 .file-ico {
   width: 20px;

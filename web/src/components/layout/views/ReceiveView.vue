@@ -2,6 +2,7 @@
 // 接收文件视图：对齐 docs/prototypes/main-receiving.png
 import { ref } from 'vue'
 import Icon from '../../common/Icon.vue'
+import EmptyState from '../../common/EmptyState.vue'
 import { useUi } from '../../../composables/useUi'
 import {
   RECEIVE_CHANNEL, RECEIVE_ACTIVE, RECEIVE_QUEUE, RECEIVE_DONE, RECEIVE_HINT,
@@ -75,6 +76,7 @@ function onPause() {
           <span class="lc-note ll-text-tertiary">{{ f.note }}</span>
           <button class="lc-x" title="取消"><Icon name="close" :size="11" /></button>
         </div>
+        <EmptyState v-if="!RECEIVE_QUEUE.length" description="暂无数据" />
       </div>
 
       <!-- 最近完成列表 -->
@@ -90,6 +92,7 @@ function onPause() {
           <span class="lc-done"><Icon name="check" :size="11" /> {{ f.note }}</span>
           <button class="lc-open" title="打开所在目录"><Icon name="folder" :size="13" /></button>
         </div>
+        <EmptyState v-if="!RECEIVE_DONE.length" description="暂无数据" />
       </div>
 
       <!-- 底部提示条 -->

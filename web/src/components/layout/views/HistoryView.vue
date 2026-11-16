@@ -2,6 +2,7 @@
 // 传输记录视图：对齐 docs/prototypes/main-history.png
 import { computed, ref } from 'vue'
 import Icon from '../../common/Icon.vue'
+import EmptyState from '../../common/EmptyState.vue'
 import { useUi } from '../../../composables/useUi'
 import { useRecords } from '../../../composables/useRecords'
 import { HISTORY_STATS, HISTORY_HINT, type HistoryRow } from '../../../data/views'
@@ -192,7 +193,9 @@ const footText = computed(() => {
               <td><button class="row-open" title="查看诊断详情" @click="diagRow = r"><Icon name="file" :size="13" /></button></td>
             </tr>
             <tr v-if="!rows.length">
-              <td colspan="8" class="empty-row">没有符合当前筛选条件的记录</td>
+              <td colspan="8" class="empty-row">
+                <EmptyState description="暂无数据" />
+              </td>
             </tr>
           </tbody>
         </table>
@@ -354,7 +357,7 @@ const footText = computed(() => {
   display: inline-flex; align-items: center; justify-content: center;
 }
 .row-open:hover { background: var(--ll-color-brand-light); }
-.empty-row { text-align: center; color: var(--ll-color-text-tertiary); padding: var(--ll-space-5) 0; }
+.empty-row { padding: 0; }
 
 /* 表底分页：不画分割线，用浅灰底与数据行区分 */
 .table-foot {
