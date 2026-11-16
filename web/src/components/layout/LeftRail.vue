@@ -9,8 +9,26 @@ const { state, openDialog, navigate, receiveBadge, historyBadge } = useUi()
 
 interface Cap { label: string; value: string; tone: 'ok' | 'warn' | 'danger' | 'muted'; icon: string }
 
-/** 发送页定版（main-ready-locked.png）：本机卡无小标签、发送项角标 2 */
+/** 发送页定版（main-ready-locked.png）：仅控制发送项角标 2，不再分叉本机卡数据 */
 const locked = computed(() => state.mainView === 'send' && state.centerState === 'idle_with_lan')
+
+/**
+ * 本机信息卡：三视图共用的同一份真实数据。
+ * - 真机（Tauri）：state.self 来自 get_self_info 真采集，字段缺失显示「—」；
+ * - 浏览器预览：init() 仍会 mock 出 state.self（原型值），故同样走真实字段，
+ *   仅在 state.self 尚未就绪时回退原型常量，保证首帧与设计稿逐像素一致。
+ * 不再按 mainView/centerState 分叉，切视图不再出现 IP 忽真忽假。
+ */
+const selfCard = computed(() => {
+  const s = state.self
+  return {
+    name: s?.deviceName || 'DESKTOP-LL-01',
+    os: s?.osUser || L.selfOs,
+    lan4: s?.lan4 || L.selfLan4,
+    pub6: s?.pub6 || L.selfPub6,
+    stun: s?.stun || L.selfStun,
+  }
+})
 
 /** 四项导航：角标随激活视图变化（原型：激活项蓝色徽标，其余灰色） */
 const nav = computed(() => [
@@ -69,30 +87,27 @@ const receiveCaps: Cap[] = [
 
 <template>
   <aside class="rail">
-    <!-- 本机信息卡（三视图共用） -->
+    <!-- 本机信息卡（三视图共用同一份真实数据，来源 get_self_info） -->
     <div class="ll-card self-card">
       <div class="self-head">
         <span class="self-avatar"><Icon name="monitor" :size="16" /></span>
         <div class="ll-col self-meta">
-          <span class="self-name ll-truncate">{{ state.self?.deviceName || 'DESKTOP-LL-01' }}</span>
-          <span class="self-os ll-text-tertiary ll-truncate">{{ locked ? L.selfOs : (state.self?.osUser || 'Windows 11 · 当前用户 chen') }}</span>
+          <span class="self-name ll-truncate" :title="selfCard.name">{{ selfCard.name }}</span>
+          <span class="self-os ll-text-tertiary ll-truncate" :title="selfCard.os">{{ selfCard.os }}</span>
         </div>
       </div>
       <div class="self-addr">
         <div class="addr-row">
           <span class="addr-k">Lan4</span>
-          <span class="addr-v ll-mono ll-truncate">{{ locked ? L.selfLan4 : (state.self?.lan4 || '192.168.1.24') }}</span>
-          <span v-if="!locked" class="addr-tag" title="未打包进凭证">—</span>
+          <span class="addr-v ll-mono ll-truncate" :title="selfCard.lan4">{{ selfCard.lan4 }}</span>
         </div>
         <div class="addr-row">
           <span class="addr-k">Pub6</span>
-          <span class="addr-v ll-mono ll-truncate">{{ locked ? L.selfPub6 : (state.self?.pub6 || '2408:8207:3d4f:…:9c1d') }}</span>
-          <span v-if="!locked" class="addr-tag ok">默认</span>
+          <span class="addr-v ll-mono ll-truncate" :title="selfCard.pub6">{{ selfCard.pub6 }}</span>
         </div>
         <div class="addr-row">
           <span class="addr-k">STUN</span>
-          <span class="addr-v ll-mono ll-truncate">{{ locked ? L.selfStun : (state.self?.stun || '121.36.80.24:51820') }}</span>
-          <span v-if="!locked" class="addr-tag">默认</span>
+          <span class="addr-v ll-mono ll-truncate" :title="selfCard.stun">{{ selfCard.stun }}</span>
         </div>
       </div>
     </div>
@@ -188,8 +203,6 @@ const receiveCaps: Cap[] = [
 .addr-row { display: flex; align-items: center; gap: var(--ll-space-1); font-size: var(--ll-fs-xs); }
 .addr-k { color: var(--ll-color-text-tertiary); width: 32px; flex: none; }
 .addr-v { color: var(--ll-color-text-secondary); flex: 1; }
-.addr-tag { flex: none; font-size: 10px; color: var(--ll-color-text-quaternary); }
-.addr-tag.ok { color: var(--ll-color-success); }
 
 .rail-nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-item {
