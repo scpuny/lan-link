@@ -9,17 +9,42 @@ import { HISTORY_STATS, HISTORY_HINT, type HistoryRow } from '../../../data/view
 const { state } = useUi()
 const { rows: allRows, total, clearAll, exportCsv } = useRecords()
 const PAGE_SIZE = 6
+const DAY_MS = 86_400_000
 const diagRow = ref<HistoryRow | null>(null)
+
+/** 把一条记录解析成「当天 00:00」的时间戳；真实记录优先用 ts，种子用 time 字符串 */
+function dayIndex(r: HistoryRow): number | null {
+  const ts = (r as HistoryRow & { ts?: number }).ts
+  if (typeof ts === 'number') {
+    const d = new Date(ts)
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  }
+  const m = r.time.match(/^(?:(\d{4})-)?(\d{2})-(\d{2})/)
+  if (!m) return null
+  const year = m[1] ? Number(m[1]) : new Date().getFullYear()
+  return new Date(year, Number(m[2]) - 1, Number(m[3])).getTime()
+}
+
+/** 以数据集中最新一天为基准：演示种子仍是 11-14，真实传输后自动变成今天 */
+const latestDay = computed(() => {
+  let max = 0
+  for (const r of allRows.value) {
+    const d = dayIndex(r)
+    if (d !== null && d > max) max = d
+  }
+  return max
+})
 
 /** F25：时间范围 / 方向 / 状态 / 搜索全量筛选（作用于真实持久化数据） */
 const filtered = computed(() => {
   const q = state.historyQuery.trim().toLowerCase()
+  const base = latestDay.value
   return allRows.value.filter((r) => {
-    if (state.historyRange === 'today' && !r.time.startsWith('11-14')) return false
-    if (state.historyRange === '7d') {
-      // 原型种子固定 11 月，近 7 天按 11-08..11-14 处理
-      const d = parseInt(r.time.slice(5, 7), 10)
-      if (!(d >= 8 && d <= 14)) return false
+    if (state.historyRange !== 'all') {
+      const d = dayIndex(r)
+      if (d === null) return false
+      if (state.historyRange === 'today' && d !== base) return false
+      if (state.historyRange === '7d' && (d > base || d < base - 6 * DAY_MS)) return false
     }
     if (state.historyDirection === 'send' && r.direction !== '发送') return false
     if (state.historyDirection === 'receive' && r.direction !== '接收') return false
@@ -29,8 +54,10 @@ const filtered = computed(() => {
   })
 })
 const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
+/** 防御：筛选后页数变少时钳住页码，避免切到近 7 天仍是旧页而显示空表 */
+const safePage = computed(() => Math.min(Math.max(1, state.historyPage), pageCount.value))
 const rows = computed(() =>
-  filtered.value.slice((state.historyPage - 1) * PAGE_SIZE, state.historyPage * PAGE_SIZE),
+  filtered.value.slice((safePage.value - 1) * PAGE_SIZE, safePage.value * PAGE_SIZE),
 )
 
 /** F27：由记录生成脱敏诊断快照行 */
@@ -83,8 +110,8 @@ const resultText = computed(() =>
 )
 const footText = computed(() => {
   if (!filtered.value.length) return `显示 0 条，共 ${total.value} 条`
-  const start = (state.historyPage - 1) * PAGE_SIZE + 1
-  const end = Math.min(state.historyPage * PAGE_SIZE, filtered.value.length)
+  const start = (safePage.value - 1) * PAGE_SIZE + 1
+  const end = Math.min(safePage.value * PAGE_SIZE, filtered.value.length)
   return `显示 ${start}-${end} 条，共 ${filtered.value.length} 条`
 })
 </script>
@@ -102,7 +129,7 @@ const footText = computed(() => {
           :key="r.key"
           class="range-btn"
           :class="{ active: state.historyRange === r.key }"
-          @click="state.historyRange = r.key as any"
+          @click="state.historyRange = r.key as any; state.historyPage = 1"
         >{{ r.label }}</button>
       </div>
     </header>
