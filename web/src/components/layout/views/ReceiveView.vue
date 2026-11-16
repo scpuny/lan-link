@@ -8,11 +8,22 @@ import {
   RECEIVE_CHANNEL, RECEIVE_ACTIVE, RECEIVE_QUEUE, RECEIVE_DONE, RECEIVE_HINT,
 } from '../../../data/views'
 
-const { state, chooseSaveDir } = useUi()
+const { state, chooseSaveDir, showToast, openSaveDir } = useUi()
 const connected = ref(true)
 
 function onPause() {
   state.receivePaused = !state.receivePaused
+  showToast(state.receivePaused ? '已暂停接收' : '已继续接收')
+}
+function toggleConnected() {
+  connected.value = !connected.value
+  showToast(connected.value ? '已恢复接收，等待对端连接' : '已断开接收通道')
+}
+function cancelReceive() {
+  showToast('已取消本次接收')
+}
+function cancelQueued() {
+  showToast('已从队列移除')
 }
 </script>
 
@@ -39,8 +50,7 @@ function onPause() {
           <span>{{ RECEIVE_CHANNEL.addr }}</span>
         </div>
         <span v-if="connected" class="cb-speed">{{ RECEIVE_CHANNEL.speed }}</span>
-        <button v-if="connected" class="ll-btn ll-btn--default ll-btn--sm" @click="connected = false">断开</button>
-        <button v-else class="ll-btn ll-btn--default ll-btn--sm" @click="connected = true">重新允许接收</button>
+        <button class="ll-btn ll-btn--default ll-btn--sm" @click="toggleConnected">{{ connected ? '断开' : '重新允许接收' }}</button>
       </div>
 
       <!-- 正在接收卡 -->
@@ -54,7 +64,7 @@ function onPause() {
           <button class="ac-btn" :title="state.receivePaused ? '继续接收' : '暂停接收'" @click="onPause">
             <Icon :name="state.receivePaused ? 'play' : 'pause'" :size="12" />
           </button>
-          <button class="ac-btn" title="取消接收"><Icon name="close" :size="12" /></button>
+          <button class="ac-btn" title="取消接收" @click="cancelReceive"><Icon name="close" :size="12" /></button>
         </div>
         <div class="ll-progress"><i :style="{ width: RECEIVE_ACTIVE.progress + '%' }" /></div>
         <div class="ac-foot">
@@ -74,7 +84,7 @@ function onPause() {
           <span class="lc-name ll-truncate">{{ f.name }}</span>
           <span class="lc-size">{{ f.size }}</span>
           <span class="lc-note ll-text-tertiary">{{ f.note }}</span>
-          <button class="lc-x" title="取消"><Icon name="close" :size="11" /></button>
+          <button class="lc-x" title="取消" @click="cancelQueued"><Icon name="close" :size="11" /></button>
         </div>
         <EmptyState v-if="!RECEIVE_QUEUE.length" description="暂无数据" />
       </div>
@@ -90,7 +100,7 @@ function onPause() {
           <span class="lc-name ll-truncate">{{ f.name }}</span>
           <span class="lc-size">{{ f.size }}</span>
           <span class="lc-done"><Icon name="check" :size="11" /> {{ f.note }}</span>
-          <button class="lc-open" title="打开所在目录"><Icon name="folder" :size="13" /></button>
+          <button class="lc-open" title="打开所在目录" @click="openSaveDir"><Icon name="folder" :size="13" /></button>
         </div>
         <EmptyState v-if="!RECEIVE_DONE.length" description="暂无数据" />
       </div>

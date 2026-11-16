@@ -2,8 +2,19 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import Modal from '../common/Modal.vue'
 import Icon from '../common/Icon.vue'
+import { useUi } from '../../composables/useUi'
 
+const { showToast } = useUi()
 const emit = defineEmits<{ (e: 'close'): void }>()
+
+function abortHandshake() {
+  showToast('已中断握手 · 凭证与密钥已清零')
+  emit('close')
+}
+function backgroundWait() {
+  showToast('已转到后台 · 连接请求到达时会通知你')
+  emit('close')
+}
 
 const remain = ref(869) // 14:29
 const elapsed = ref(9.4)
@@ -77,8 +88,8 @@ const serial = 'K7G2S9-5MNP8R-2HJK7T-9QG3S5-4WXY6A-8BCD3F-6NPQ2R-9STV4K-3HJL7M-5
 
     <!-- 按钮 -->
     <div class="wc-actions">
-      <button class="ll-btn ll-btn--danger-outline" @click="emit('close')"><Icon name="close" :size="13" /> 中断握手</button>
-      <button class="ll-btn ll-btn--default" @click="emit('close')"><Icon name="minus" :size="13" /> 转到后台</button>
+      <button class="ll-btn ll-btn--danger-outline" @click="abortHandshake"><Icon name="close" :size="13" /> 中断握手</button>
+      <button class="ll-btn ll-btn--default" @click="backgroundWait"><Icon name="minus" :size="13" /> 转到后台</button>
     </div>
 
     <!-- 蓝色进度横幅 -->

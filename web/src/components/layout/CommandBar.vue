@@ -7,7 +7,7 @@ import { SEND_LOCKED as L } from '../../data/send'
 
 import { useRecords } from '../../composables/useRecords'
 
-const { state, openDialog, openSaveDir, pickFiles, chooseSaveDir, setDiscoverable, rescanLan, pauseAllTasks, showToast } = useUi()
+const { state, openDialog, openSaveDir, pickFiles, chooseSaveDir, setDiscoverable, rescanLan, pauseAllTasks, showToast, busy } = useUi()
 const { rows: recordRows, clearAll: clearRecords, exportCsv } = useRecords()
 
 const view = computed(() => state.mainView)
@@ -75,8 +75,10 @@ function onExportCsv() {
         </button>
         <template v-if="withLan">
           <span class="cb-sep" />
-          <button class="ll-btn ll-btn--default" @click="onRescan">
-            <Icon name="refresh" :size="14" /> {{ L.rescanLabel }}
+          <button class="ll-btn ll-btn--default" :disabled="busy.rescan" @click="onRescan">
+            <span v-if="busy.rescan" class="ll-spinner ll-spinner--xs" />
+            <Icon v-else name="refresh" :size="14" :class="{ 'spin': busy.rescan }" />
+            {{ busy.rescan ? '扫描中…' : L.rescanLabel }}
           </button>
         </template>
         <label v-else-if="!transferring" class="cb-search">
@@ -232,4 +234,8 @@ function onExportCsv() {
   color: var(--ll-color-text-tertiary);
 }
 .cb-gear:hover { background: var(--ll-color-surface-hover); color: var(--ll-color-brand); }
+
+/* 扫描中反馈：小号 spinner 与图标旋转 */
+.ll-spinner--xs { width: 12px; height: 12px; border-width: 1.5px; }
+.spin { animation: ll-spin .8s linear infinite; }
 </style>

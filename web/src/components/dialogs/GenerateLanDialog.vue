@@ -33,7 +33,10 @@ async function copyCode() {
     await navigator.clipboard.writeText(result.value?.code || '')
     copied.value = true
     setTimeout(() => (copied.value = false), 1500)
-  } catch { /* ignore */ }
+    showToast('局域网短码已复制到剪贴板')
+  } catch {
+    showToast('复制失败 · 请手动选择短码复制')
+  }
 }
 
 function close() { emit('close') }

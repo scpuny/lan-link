@@ -10,6 +10,16 @@ const { state, chooseSaveDir, clearBlacklist, showToast, openSaveDir } = useUi()
 const { pref, setTheme, palette, setPalette } = useTheme()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
+const checkingUpdate = ref(false)
+async function checkUpdate() {
+  if (checkingUpdate.value) return
+  checkingUpdate.value = true
+  // TODO-F33：接真实更新检查（需打包签名 + 发布渠道）；当前延迟模拟
+  await new Promise((r) => setTimeout(r, 700))
+  checkingUpdate.value = false
+  showToast('已是最新版本 · v0.9.4')
+}
+
 type TabKey = 'general' | 'appearance' | 'transfer' | 'security' | 'about'
 const tab = ref<TabKey>('general')
 const nav: { key: TabKey; label: string; icon: string }[] = [
@@ -123,7 +133,10 @@ function saveSettings() {
 <template>
   <Modal :title="tab === 'about' ? '关于 LanLink' : '设置'" :icon="tab === 'about' ? 'info' : 'settings'" :width="720" @close="close">
     <template #header-extra>
-      <button v-if="tab === 'about'" class="ll-btn ll-btn--default ll-btn--sm set-head-btn" @click="close"><Icon name="update" :size="12" /> 检查更新</button>
+      <button v-if="tab === 'about'" class="ll-btn ll-btn--default ll-btn--sm set-head-btn" :disabled="checkingUpdate" @click="checkUpdate">
+        <span v-if="checkingUpdate" class="ll-spinner ll-spinner--xs" />
+        <Icon v-else name="update" :size="12" /> {{ checkingUpdate ? '检查中…' : '检查更新' }}
+      </button>
     </template>
 
     <div class="set-layout">
@@ -274,7 +287,10 @@ function saveSettings() {
               <span class="ll-text-tertiary">build 20261114 · 协议 v1</span>
               <span class="ll-tag ll-tag--success"><Icon name="check" :size="11" /> 已是最新</span>
             </div>
-            <button class="ll-btn ll-btn--default ll-btn--sm"><Icon name="update" :size="12" /> 检查更新</button>
+            <button class="ll-btn ll-btn--default ll-btn--sm" :disabled="checkingUpdate" @click="checkUpdate">
+              <span v-if="checkingUpdate" class="ll-spinner ll-spinner--xs" />
+              <Icon v-else name="update" :size="12" /> {{ checkingUpdate ? '检查中…' : '检查更新' }}
+            </button>
           </section>
 
           <section class="ll-card set-group">
@@ -409,4 +425,5 @@ function saveSettings() {
 
 .set-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--ll-space-3); width: 100%; }
 .set-foot > span { display: inline-flex; align-items: center; gap: var(--ll-space-1); font-size: var(--ll-fs-xs); }
+.ll-spinner--xs { width: 11px; height: 11px; border-width: 1.5px; }
 </style>

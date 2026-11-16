@@ -122,6 +122,9 @@ const historyBadge = HISTORY_TOTAL
 const toast = ref<string | null>(null)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
+/** 正在进行的动作 key 集合：供按钮显示 loading / 禁用态（如 'rescan'） */
+const busy = ref<Record<string, boolean>>({})
+
 function showToast(message: string, duration = 2600) {
   toast.value = message
   if (toastTimer) clearTimeout(toastTimer)
@@ -367,13 +370,17 @@ async function setDiscoverable(on: boolean) {
   }
 }
 
-/** F11：重新扫描设备，刷新设备表 */
+/** F11：重新扫描设备，刷新设备表（带 loading 态，按钮显示 spinner 并禁用） */
 async function rescanLan() {
+  if (busy.value.rescan) return
+  busy.value.rescan = true
   try {
     state.nearby = await invoke<NearbyDevice[]>('scan_lan')
     showToast(`扫描完成 · 发现 ${state.nearby.length} 台设备`)
   } catch (e) {
     showToast(`扫描失败 · ${e instanceof Error ? e.message : String(e)}`)
+  } finally {
+    busy.value.rescan = false
   }
 }
 
@@ -442,6 +449,7 @@ export function useUi() {
     state,
     statusText,
     toast,
+    busy,
     receiveBadge,
     historyBadge,
     init,

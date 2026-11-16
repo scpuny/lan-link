@@ -6,7 +6,7 @@ import { useUi } from '../../composables/useUi'
 import { invoke } from '../../bridge'
 import type { GenerateResult, CandidateAddr } from '../../types/invite'
 
-const { state, openDialog } = useUi()
+const { state, openDialog, showToast } = useUi()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 type Phase = 'form' | 'generating' | 'done'
@@ -61,7 +61,10 @@ async function copySerial() {
     await navigator.clipboard.writeText(result.value?.serial || '')
     copied.value = true
     setTimeout(() => (copied.value = false), 1500)
-  } catch { /* ignore */ }
+    showToast('序列号已复制到剪贴板')
+  } catch {
+    showToast('复制失败 · 请手动选择序列号复制')
+  }
 }
 
 async function generate() {
