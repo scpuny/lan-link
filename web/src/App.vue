@@ -12,6 +12,7 @@ import GenerateDialog from './components/dialogs/GenerateDialog.vue'
 import GenerateLanDialog from './components/dialogs/GenerateLanDialog.vue'
 import WaitConnectDialog from './components/dialogs/WaitConnectDialog.vue'
 import SettingsDialog from './components/dialogs/SettingsDialog.vue'
+import ConfirmDialog from './components/common/ConfirmDialog.vue'
 import { useUi } from './composables/useUi'
 
 const { state, toast, init } = useUi()
@@ -53,6 +54,8 @@ onMounted(() => {
   <GenerateLanDialog v-if="state.dialogs.generateLan" @close="state.dialogs.generateLan = false" />
   <WaitConnectDialog v-if="state.dialogs.waitConnect" @close="state.dialogs.waitConnect = false" />
   <SettingsDialog v-if="state.dialogs.settings" @close="state.dialogs.settings = false" />
+  <!-- 危险操作二次确认（置于最高层，覆盖其他弹窗） -->
+  <ConfirmDialog />
 </template>
 
 <style scoped>

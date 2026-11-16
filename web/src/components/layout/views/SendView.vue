@@ -12,9 +12,43 @@ import type { SendFile } from '../../../types/invite'
 
 const {
   state, openDialog, pickFiles, pickFolder, pasteSend, addPathsToSend,
-  removeSendFile, clearSendFiles, sendSummary, showToast,
-  pauseTask, resumeTask, cancelTask,
+  removeSendFile: doRemoveSendFile, clearSendFiles: doClearSendFiles, sendSummary, showToast,
+  pauseTask, resumeTask, cancelTask: doCancelTask, confirm,
 } = useUi()
+
+/** 危险操作：移除单个待发文件（二次确认） */
+async function removeSendFile(pathOrName: string) {
+  const f = state.sendFiles.find((x) => (x.path || x.name) === pathOrName)
+  const ok = await confirm({
+    title: '移除待发送文件',
+    message: `确定从待发列表移除「${f?.name || pathOrName}」？`,
+    confirmText: '移除',
+  })
+  if (ok) doRemoveSendFile(pathOrName)
+}
+
+/** 危险操作：清空待发列表（二次确认） */
+async function clearSendFiles() {
+  const n = state.sendFiles.length
+  if (!n) return
+  const ok = await confirm({
+    title: '清空待发列表',
+    message: `将移除全部 ${n} 个待发送文件，需重新选择才能再次发送。`,
+    confirmText: '清空全部',
+  })
+  if (ok) doClearSendFiles()
+}
+
+/** 危险操作：取消传输任务（二次确认，已传部分不保留） */
+async function cancelTask(id: string) {
+  const t = state.tasks.find((x) => x.id === id)
+  const ok = await confirm({
+    title: '取消传输任务',
+    message: `确定取消「${t?.name || id}」？已传输的部分不会保留。`,
+    confirmText: '取消任务',
+  })
+  if (ok) doCancelTask(id)
+}
 
 const withLan = computed(() => state.centerState === 'idle_with_lan')
 const transferring = computed(() => state.centerState === 'transferring')

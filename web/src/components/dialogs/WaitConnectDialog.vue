@@ -4,10 +4,18 @@ import Modal from '../common/Modal.vue'
 import Icon from '../common/Icon.vue'
 import { useUi } from '../../composables/useUi'
 
-const { showToast } = useUi()
+const { showToast, confirm } = useUi()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-function abortHandshake() {
+/** 危险操作：中断握手（二次确认，凭证密钥会清零） */
+async function abortHandshake() {
+  const ok = await confirm({
+    title: '中断握手',
+    message: '确定中断本次连接握手？凭证与密钥将被清零，对方需重新发起连接。',
+    confirmText: '中断握手',
+    tone: 'warning',
+  })
+  if (!ok) return
   showToast('已中断握手 · 凭证与密钥已清零')
   emit('close')
 }

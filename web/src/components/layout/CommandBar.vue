@@ -7,7 +7,7 @@ import { SEND_LOCKED as L } from '../../data/send'
 
 import { useRecords } from '../../composables/useRecords'
 
-const { state, openDialog, openSaveDir, pickFiles, chooseSaveDir, setDiscoverable, rescanLan, pauseAllTasks, showToast, busy } = useUi()
+const { state, openDialog, openSaveDir, pickFiles, chooseSaveDir, setDiscoverable, rescanLan, pauseAllTasks, showToast, busy, confirm } = useUi()
 const { rows: recordRows, clearAll: clearRecords, exportCsv } = useRecords()
 
 const view = computed(() => state.mainView)
@@ -44,9 +44,14 @@ function onSearchInput(e: Event) {
   state.historyPage = 1
 }
 
-function onClear() {
+async function onClear() {
   // F28：清空记录需二次确认，防止误删本机流水
-  if (!window.confirm('确定清空本机全部传输记录？此操作不可撤销。')) return
+  const ok = await confirm({
+    title: '清空传输记录',
+    message: '将删除本机全部传输记录，操作不可撤销。建议先导出 CSV 留存。',
+    confirmText: '清空全部',
+  })
+  if (!ok) return
   clearRecords()
   state.historyPage = 1
   showToast('已清空全部传输记录')

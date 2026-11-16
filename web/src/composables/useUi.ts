@@ -25,6 +25,16 @@ export type HistoryRange = 'today' | '7d' | 'all'
 export type HistoryDirection = 'all' | 'send' | 'receive'
 export type HistoryStatus = 'all' | 'failed'
 
+/** 二次确认弹窗配置（移除/删除/清空等危险操作统一走 confirm()） */
+export interface ConfirmOptions {
+  title: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  /** danger=红色主按钮（删除/清空）；warning=品牌色主按钮（断开/中断） */
+  tone?: 'danger' | 'warning'
+}
+
 interface UiState {
   /** 左轨导航驱动的三个主视图（新增原型：接收文件 / 传输记录） */
   mainView: MainView
@@ -124,6 +134,34 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 /** 正在进行的动作 key 集合：供按钮显示 loading / 禁用态（如 'rescan'） */
 const busy = ref<Record<string, boolean>>({})
+
+/** 二次确认弹窗：Promise 化，await confirm() 的布尔结果决定是否执行危险操作 */
+interface ConfirmRequest extends ConfirmOptions {
+  resolve: (ok: boolean) => void
+}
+const confirmRequest = ref<ConfirmRequest | null>(null)
+
+function confirm(opts: ConfirmOptions): Promise<boolean> {
+  // 防叠加：若已有确认框未处理，先按「取消」结掉
+  if (confirmRequest.value) confirmRequest.value.resolve(false)
+  return new Promise<boolean>((resolve) => {
+    confirmRequest.value = {
+      title: opts.title,
+      message: opts.message,
+      confirmText: opts.confirmText ?? '确认',
+      cancelText: opts.cancelText ?? '取消',
+      tone: opts.tone ?? 'danger',
+      resolve,
+    }
+  })
+}
+
+function resolveConfirm(ok: boolean) {
+  const req = confirmRequest.value
+  if (!req) return
+  confirmRequest.value = null
+  req.resolve(ok)
+}
 
 function showToast(message: string, duration = 2600) {
   toast.value = message
@@ -450,6 +488,9 @@ export function useUi() {
     statusText,
     toast,
     busy,
+    confirmRequest,
+    confirm,
+    resolveConfirm,
     receiveBadge,
     historyBadge,
     init,

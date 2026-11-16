@@ -6,7 +6,18 @@ import { useTheme, type ThemePref } from '../../composables/useTheme'
 import { useUi } from '../../composables/useUi'
 import { VISUAL_STYLES, DEFAULT_PALETTE, type PaletteMeta } from '../../data/themes'
 
-const { state, chooseSaveDir, clearBlacklist, showToast, openSaveDir } = useUi()
+const { state, chooseSaveDir, clearBlacklist: doClearBlacklist, showToast, openSaveDir, confirm } = useUi()
+
+/** 危险操作：清空会话黑名单（二次确认） */
+async function clearBlacklist() {
+  const ok = await confirm({
+    title: '清空会话黑名单',
+    message: `将解除当前 ${state.blacklistCount} 条被拒绝设备的限制，对方可再次发起连接。`,
+    confirmText: '清空',
+  })
+  if (!ok) return
+  doClearBlacklist()
+}
 const { pref, setTheme, palette, setPalette } = useTheme()
 const emit = defineEmits<{ (e: 'close'): void }>()
 

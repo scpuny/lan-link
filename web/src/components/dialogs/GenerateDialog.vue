@@ -6,7 +6,7 @@ import { useUi } from '../../composables/useUi'
 import { invoke } from '../../bridge'
 import type { GenerateResult, CandidateAddr } from '../../types/invite'
 
-const { state, openDialog, showToast } = useUi()
+const { state, openDialog, showToast, confirm } = useUi()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 type Phase = 'form' | 'generating' | 'done'
@@ -83,7 +83,19 @@ async function generate() {
   startTtl()
   copySerial()
 }
-function regen() { stopTtl(); phase.value = 'form'; result.value = null }
+/** 危险操作：重新生成会作废旧序列号（若已发给对方将无法连接） */
+async function regen() {
+  const ok = await confirm({
+    title: '重新生成序列号',
+    message: '当前序列号将立即失效。如果已发送给对方，对方将无法再用它连接。',
+    confirmText: '重新生成',
+    tone: 'warning',
+  })
+  if (!ok) return
+  stopTtl()
+  phase.value = 'form'
+  result.value = null
+}
 function close() { stopTtl(); emit('close') }
 
 const badge = computed(() =>

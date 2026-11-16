@@ -463,7 +463,7 @@ macOS 菜单由 `menu.rs` 构建为系统 NSMenu；Windows/Linux 由 `AppMenu.vu
 | F25 | ✅ 完成 | 真分页与全量筛选 | 分页作用于真实数据源；时间范围按记录真实时间动态判断（修复 7d 硬编码切片 bug），切换范围自动回第 1 页 | H1/H7 |
 | F26 | ✅ 完成 | 导出 CSV | 按当前筛选结果生成文件 | 命令栏记录页 |
 | F27 | ✅ 完成 | 诊断详情面板 | 行尾按钮打开该次会话的诊断快照 | H6 |
-| F28 | ✅ 完成 | 清空记录 | 二次确认后清空 | 命令栏记录页 |
+| F28 | ✅ 完成 | 清空记录 | 二次确认后清空（统一 `confirm()` 弹窗，非原生 `window.confirm`） | 命令栏记录页 |
 | F29 | ✅ 完成 | 设置持久化 | 除外观外所有开关写入配置并在启动时生效 | 设置弹窗 |
 | F30 | ⚠️ 受限 | 托盘 / 开机自启 / 通知 | UI 与开关持久化已做，需打包签名 + 系统 API（TODO-03） | 设置通用页 |
 | F31 | ⚠️ 受限 | 防火墙入站规则 | 开关已持久化，实际放行需管理员权限（TODO-04） | 设置传输页 |
@@ -501,6 +501,19 @@ macOS 菜单由 `menu.rs` 构建为系统 NSMenu；Windows/Linux 由 `AppMenu.vu
 | `crates/lanlink-desktop/src/session.rs` | F12–F17：TCP 42210 握手（Initiator 监听 / Receiver 拨号）、复用 FSM、内存黑名单、F18 起接管连接 |
 | `crates/lanlink-desktop/src/transfer.rs` | F18–F23：4MB 分片、seq 单调/重复丢弃/乱序回退重传、落盘+同名重命名、Blake3 单片/整文件校验、暂停/继续/取消、`ll-transfer-progress` 事件 |
 | `web/src/composables/useRecords.ts` | F24–F28：localStorage 记录持久化、30 天清理、CSV 导出、清空 |
+| `web/src/composables/useUi.ts` | `confirm()` Promise 化二次确认状态机 + 全局 `busy` 防重复点击 |
+| `web/src/components/common/ConfirmDialog.vue` | 危险操作统一确认弹窗（危险/警告两级，基于 Modal 组件，随主题自适应） |
+
+**危险操作二次确认覆盖清单**（全部走 `confirm()`，取消即中止，确认才执行）：
+
+| 位置 | 操作 | tone |
+| --- | --- | --- |
+| 命令栏 | 清空全部传输记录 | danger |
+| 发送页 | 移除单个待发文件 / 清空待发列表 / 取消传输任务 | danger |
+| 接收页 | 断开接收通道 / 取消本次接收 / 移除排队任务 | warning / danger |
+| 设置弹窗 | 清空会话黑名单 | danger |
+| 生成弹窗 | 重新生成序列号（作废旧凭证） | warning |
+| 等待连接弹窗 | 中断握手（清零凭证密钥） | warning |
 
 ### 11.2 状态推进对照
 

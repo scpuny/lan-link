@@ -8,21 +8,51 @@ import {
   RECEIVE_CHANNEL, RECEIVE_ACTIVE, RECEIVE_QUEUE, RECEIVE_DONE, RECEIVE_HINT,
 } from '../../../data/views'
 
-const { state, chooseSaveDir, showToast, openSaveDir } = useUi()
+const { state, chooseSaveDir, showToast, openSaveDir, confirm } = useUi()
 const connected = ref(true)
 
 function onPause() {
   state.receivePaused = !state.receivePaused
   showToast(state.receivePaused ? '已暂停接收' : '已继续接收')
 }
-function toggleConnected() {
-  connected.value = !connected.value
-  showToast(connected.value ? '已恢复接收，等待对端连接' : '已断开接收通道')
+
+/** 危险操作：断开接收通道（二次确认） */
+async function toggleConnected() {
+  if (connected.value) {
+    const ok = await confirm({
+      title: '断开接收通道',
+      message: '断开后本机将不再被同网段设备发现和连接，正在进行的接收会中断。',
+      confirmText: '断开',
+      tone: 'warning',
+    })
+    if (!ok) return
+    connected.value = false
+    showToast('已断开接收通道')
+  } else {
+    connected.value = true
+    showToast('已恢复接收，等待对端连接')
+  }
 }
-function cancelReceive() {
+
+/** 危险操作：取消正在接收的文件（二次确认） */
+async function cancelReceive() {
+  const ok = await confirm({
+    title: '取消本次接收',
+    message: '将中断当前文件的接收，已收到的数据不会保留，需对方重新发送。',
+    confirmText: '取消接收',
+  })
+  if (!ok) return
   showToast('已取消本次接收')
 }
-function cancelQueued() {
+
+/** 危险操作：从队列移除接收任务（二次确认） */
+async function cancelQueued() {
+  const ok = await confirm({
+    title: '移除排队任务',
+    message: '确定从接收队列中移除该任务？',
+    confirmText: '移除',
+  })
+  if (!ok) return
   showToast('已从队列移除')
 }
 </script>
