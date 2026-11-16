@@ -1,0 +1,20 @@
+# Rust
+/target
+**/target
+
+# Node / Vue
+node_modules
+web/node_modules
+web/dist
+web/dist-ssr
+web/shot.mjs
+
+# Tauri 生成物
+crates/*/gen
+*.app
+*.dmg
+
+# 编辑器 / 系统
+.DS_Store
+.idea
+.vscode

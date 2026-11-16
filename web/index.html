@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LanLink · 跨网 P2P 文件传输</title>
+    <!-- 在首屏绘制前应用主题，避免闪烁 -->
+    <script>
+      (function () {
+        try {
+          var pref = localStorage.getItem('ll-theme') || 'system';
+          var sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          var theme = pref === 'system' ? sys : pref;
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

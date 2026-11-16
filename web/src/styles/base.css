@@ -1,0 +1,107 @@
+/* =====================================================================
+ * LanLink Base Styles（reset + 全局基础 + 窗口容器）
+ * 原型是「桌面画布 → 圆角窗口」两层结构；真机（Tauri）下去掉外层画布铺满。
+ * ===================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--ll-font-sans);
+  font-size: var(--ll-fs-base);
+  line-height: var(--ll-lh-base);
+  color: var(--ll-color-text);
+  background: var(--ll-color-canvas);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color var(--ll-duration-base) var(--ll-ease-standard),
+    color var(--ll-duration-base) var(--ll-ease-standard);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ll-window-inset);
+  overflow: hidden;
+}
+
+/* 桌面窗口外壳：白色圆角 + 投影，与 calicat 原型一致 */
+.ll-window {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ll-color-bg);
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-window-radius);
+  box-shadow: var(--ll-shadow-window);
+  overflow: hidden;
+}
+
+/* Tauri 真机：窗口本身已由系统绘制圆角与阴影，铺满即可 */
+.ll-window.is-native {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+#app.is-native { padding: 0; }
+
+h1, h2, h3, h4, h5, h6, p, figure {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+a {
+  color: var(--ll-color-brand);
+  text-decoration: none;
+}
+
+/* 滚动条（跨主题） */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ll-color-border-strong);
+  border-radius: var(--ll-radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ll-color-text-quaternary);
+}
+
+/* 文本工具类 */
+.ll-mono {
+  font-family: var(--ll-font-mono);
+  font-variant-ligatures: none;
+}
+.ll-text-secondary { color: var(--ll-color-text-secondary); }
+.ll-text-tertiary { color: var(--ll-color-text-tertiary); }
+.ll-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

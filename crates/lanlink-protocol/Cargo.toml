@@ -1,0 +1,16 @@
+[package]
+name = "lanlink-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LanLink 外网邀请序列号协议层（D3）：二进制序列化 / 定制 Base32 / LZ4 自适应 / AES-GCM 可选加密 / Blake3 质询 / 握手状态机"
+
+[dependencies]
+crc32fast = "1"
+lz4_flex = "0.11"
+aes-gcm = "0.10"
+pbkdf2 = "0.12"
+hmac = "0.12"
+sha2 = "0.10"
+blake3 = "1"
+rand = "0.8"

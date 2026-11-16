@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/lanlink-protocol",  # D3 协议层（纯 Rust，无 GUI 依赖，可独立测试）
+    "crates/lanlink-desktop",   # Tauri v2 桌面外壳，依赖 lanlink-protocol
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"

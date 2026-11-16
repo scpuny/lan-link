@@ -1,0 +1,27 @@
+[package]
+name = "lanlink-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LanLink 桌面端（Tauri v2 外壳），集成 lanlink-protocol 协议层"
+default-run = "lanlink-desktop"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+lanlink-protocol = { path = "../lanlink-protocol" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+walkdir = "2"
+if-addrs = "0.13"
+zeroize = "1"
+blake3 = "1"
+
+[features]
+# 默认关闭自定义协议，便于在开发期用 `tauri dev` 加载 Vue dev server
+default = []

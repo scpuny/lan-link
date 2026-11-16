@@ -1,0 +1,427 @@
+/* =====================================================================
+ * LanLink 视觉风格（Visual Styles / Base Styles）
+ * ---------------------------------------------------------------------
+ * 参考来源：
+ *   1) scpuny/frontend/packages/theme-ironlink/src/palettes.ts —— 6 套基础风格的
+ *      light/dark 中性色板（bg / bgSoft / bgElev / border / fg），精确 hex；
+ *   2) Reasonix Studio「视觉风格」设置页截图 —— 6 套强调色逐像素采样；
+ *   3) theme-ironlink/index.ts —— 语义色 RESERVED，主题不可覆盖（避免状态色被改成品牌色）。
+ *
+ * 因此本文件**只覆盖中性 + 品牌变量**；success/warning/danger/info 及其
+ * 浅染/边框一律沿用 tokens.css 基准，随明暗自动切换。
+ *
+ * 协调性规则（2026-11-15 修订）：
+ *   1. 四级文字色一律**不覆盖**——文字对比度是全局可读性基线，不随风格漂移；
+ *   2. 品牌按钮文字用**主色的同色相深色调**（on-primary），不是中性黑：
+ *      保留 accent 的 H/S、把 L 压到 0.10–0.22，取仍满足「常态 ≥5:1、hover ≥4:1」的最亮值。
+ *      六套各自配套（石墨深橙棕 / 极光深紫 / 精炼深蓝 / 深邃深青 / 柔和深靛 / 琥珀深褐），
+ *      既不像白字那样在亮 accent 上对比不足，也不像中性墨字那样突兀；
+ *   3. 深色下 `info-surface` / `info-border` 用该风格的中性抬升面，不用饱和品牌色，
+ *      避免「选择目标设备」标题条与绿色状态条撞色；
+ *   4. 浅色下遮罩降到 0.30，避免对话框打开时整个背景被压灰、主文字显得发虚。
+ * 明暗模式（data-theme）与视觉风格（data-palette）互相独立。
+ * prototype 不写覆盖，沿用 Calicat 原型基准。
+ * 加载顺序：tokens.css → palettes.css → base.css → ui.css。
+ * ===================================================================== */
+
+/* ---- Graphite 石墨  accent #FF7B45 ---- */
+:root[data-palette="graphite"] {
+  --ll-color-canvas: #EBECEE;
+  --ll-color-bg: #ffffff;
+  --ll-color-bg-elevated: #f7f8fa;
+  --ll-color-surface: #ffffff;
+  --ll-color-surface-2: #f7f8fa;
+  --ll-color-surface-3: #f0f1f3;
+  --ll-color-surface-hover: #EDEDEE;
+  --ll-color-row-hover: #E6E7E7;
+  --ll-color-surface-active: #FFEDE5;
+  --ll-color-titlebar: #ffffff;
+  --ll-color-border: #e5e6eb;
+  --ll-color-border-strong: #ADAFB5;
+  --ll-color-divider: #F1F1F4;
+  --ll-color-text-inverse: #571D05;  /* on-primary：graphite 同色相深色 */
+  --ll-color-brand: #FF7B45;
+  --ll-color-brand-hover: #E06C3D;
+  --ll-color-brand-active: #C76036;
+  --ll-color-brand-light: #FFE7DE;
+  --ll-color-brand-bg: rgba(255, 123, 69, 0.12);
+  --ll-color-info-surface: #FFF2EC;
+  --ll-color-info-border: #FFD5C3;
+  --ll-color-overlay: rgba(18, 22, 28, 0.30);
+  --ll-color-scrim: rgba(0, 0, 0, 0.04);
+  --ll-serial-bg: #FBFCFC;
+  --ll-serial-text: #1d2129;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+:root[data-palette="graphite"][data-theme="dark"] {
+  --ll-color-canvas: #111316;
+  --ll-color-bg: #1a1d23;
+  --ll-color-bg-elevated: #14161a;
+  --ll-color-surface: #22262e;
+  --ll-color-surface-2: #1C1F25;
+  --ll-color-surface-3: #2E3239;
+  --ll-color-surface-hover: #32353D;
+  --ll-color-row-hover: #373B43;
+  --ll-color-surface-active: #352420;
+  --ll-color-titlebar: #14161a;
+  --ll-color-border: #2a2f38;
+  --ll-color-border-strong: #5E636A;
+  --ll-color-divider: #20242A;
+  --ll-color-text-inverse: #571D05;  /* on-primary：graphite 同色相深色 */
+  --ll-color-brand: #FF7B45;
+  --ll-color-brand-hover: #FF9063;
+  --ll-color-brand-active: #FF8B5B;
+  --ll-color-brand-light: #3E2822;
+  --ll-color-brand-bg: rgba(255, 123, 69, 0.2);
+  --ll-color-info-surface: #252930;
+  --ll-color-info-border: #2a2f38;
+  --ll-color-overlay: rgba(0, 0, 0, 0.62);
+  --ll-color-scrim: rgba(255, 255, 255, 0.03);
+  --ll-serial-bg: #171A1E;
+  --ll-serial-text: #e5e7eb;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+/* ---- Aurora 柔雾极光  accent #9E7BFF ---- */
+:root[data-palette="aurora"] {
+  --ll-color-canvas: #DCE5E6;
+  --ll-color-bg: #f2f7f8;
+  --ll-color-bg-elevated: #e8f1f2;
+  --ll-color-surface: #f2f7f8;
+  --ll-color-surface-2: #e8f1f2;
+  --ll-color-surface-3: #dce9ea;
+  --ll-color-surface-hover: #E0E6E7;
+  --ll-color-row-hover: #DAE0E0;
+  --ll-color-surface-active: #E6E6F9;
+  --ll-color-titlebar: #f2f7f8;
+  --ll-color-border: #cfe0e1;
+  --ll-color-border-strong: #9BABAB;
+  --ll-color-divider: #DFEAEB;
+  --ll-color-text-inverse: #22066F;  /* on-primary：aurora 同色相深色 */
+  --ll-color-brand: #9E7BFF;
+  --ll-color-brand-hover: #8A99F7;
+  --ll-color-brand-active: #7B60C7;
+  --ll-color-brand-light: #E3E1F9;
+  --ll-color-brand-bg: rgba(158, 123, 255, 0.12);
+  --ll-color-info-surface: #EAEBF9;
+  --ll-color-info-border: #D7CFFA;
+  --ll-color-overlay: rgba(18, 22, 28, 0.30);
+  --ll-color-scrim: rgba(0, 0, 0, 0.04);
+  --ll-serial-bg: #EDF4F5;
+  --ll-serial-text: #16241f;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+:root[data-palette="aurora"][data-theme="dark"] {
+  --ll-color-canvas: #0D1115;
+  --ll-color-bg: #15201f;
+  --ll-color-bg-elevated: #0f1418;
+  --ll-color-surface: #1c2a28;
+  --ll-color-surface-2: #162021;
+  --ll-color-surface-3: #283634;
+  --ll-color-surface-hover: #2B3937;
+  --ll-color-row-hover: #313F3D;
+  --ll-color-surface-active: #232238;
+  --ll-color-titlebar: #0f1418;
+  --ll-color-border: #243634;
+  --ll-color-border-strong: #586966;
+  --ll-color-divider: #1B2727;
+  --ll-color-text-inverse: #22066F;  /* on-primary：aurora 同色相深色 */
+  --ll-color-brand: #9E7BFF;
+  --ll-color-brand-hover: #8A99F7;
+  --ll-color-brand-active: #AA8BFF;
+  --ll-color-brand-light: #292742;
+  --ll-color-brand-bg: rgba(158, 123, 255, 0.2);
+  --ll-color-info-surface: #1F2B2A;
+  --ll-color-info-border: #243634;
+  --ll-color-overlay: rgba(0, 0, 0, 0.62);
+  --ll-color-scrim: rgba(255, 255, 255, 0.03);
+  --ll-serial-bg: #121A1C;
+  --ll-serial-text: #dcebe8;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+/* ---- Slate 精炼  accent #478AF6 ---- */
+:root[data-palette="slate"] {
+  --ll-color-canvas: #E8EAEC;
+  --ll-color-bg: #fbfbfc;
+  --ll-color-bg-elevated: #f4f6f8;
+  --ll-color-surface: #fbfbfc;
+  --ll-color-surface-2: #f4f6f8;
+  --ll-color-surface-3: #edf0f3;
+  --ll-color-surface-hover: #E9EAEB;
+  --ll-color-row-hover: #E3E3E5;
+  --ll-color-surface-active: #E2EBFB;
+  --ll-color-titlebar: #fbfbfc;
+  --ll-color-border: #dfe3e8;
+  --ll-color-border-strong: #A9AEB3;
+  --ll-color-divider: #ECEEF1;
+  --ll-color-text-inverse: #031A3F;  /* on-primary：slate 同色相深色 */
+  --ll-color-brand: #478AF6;
+  --ll-color-brand-hover: #3E79D8;
+  --ll-color-brand-active: #376CC0;
+  --ll-color-brand-light: #DBE7FB;
+  --ll-color-brand-bg: rgba(71, 138, 246, 0.12);
+  --ll-color-info-surface: #E9F0FB;
+  --ll-color-info-border: #C1D7FA;
+  --ll-color-overlay: rgba(18, 22, 28, 0.30);
+  --ll-color-scrim: rgba(0, 0, 0, 0.04);
+  --ll-serial-bg: #F8F8FA;
+  --ll-serial-text: #1f2429;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+:root[data-palette="slate"][data-theme="dark"] {
+  --ll-color-canvas: #16191C;
+  --ll-color-bg: #212529;
+  --ll-color-bg-elevated: #1a1d21;
+  --ll-color-surface: #2a2f34;
+  --ll-color-surface-2: #23272B;
+  --ll-color-surface-3: #353A3F;
+  --ll-color-surface-hover: #383D42;
+  --ll-color-row-hover: #3E4348;
+  --ll-color-surface-active: #202C3F;
+  --ll-color-titlebar: #1a1d21;
+  --ll-color-border: #333a40;
+  --ll-color-border-strong: #63696F;
+  --ll-color-divider: #282D32;
+  --ll-color-text-inverse: #031A3F;  /* on-primary：slate 同色相深色 */
+  --ll-color-brand: #478AF6;
+  --ll-color-brand-hover: #649DF7;
+  --ll-color-brand-active: #5D98F7;
+  --ll-color-brand-light: #223147;
+  --ll-color-brand-bg: rgba(71, 138, 246, 0.2);
+  --ll-color-info-surface: #2C3035;
+  --ll-color-info-border: #333a40;
+  --ll-color-overlay: rgba(0, 0, 0, 0.62);
+  --ll-color-scrim: rgba(255, 255, 255, 0.03);
+  --ll-serial-bg: #1E2125;
+  --ll-serial-text: #dfe3e8;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+/* ---- Carbon 深邃  accent #28D4D1 ---- */
+:root[data-palette="carbon"] {
+  --ll-color-canvas: #E3E3DD;
+  --ll-color-bg: #f6f6f4;
+  --ll-color-bg-elevated: #efefe9;
+  --ll-color-surface: #f6f6f4;
+  --ll-color-surface-2: #efefe9;
+  --ll-color-surface-3: #e7e7df;
+  --ll-color-surface-hover: #E4E4E2;
+  --ll-color-row-hover: #DEDEDC;
+  --ll-color-surface-active: #D9F1EF;
+  --ll-color-titlebar: #f6f6f4;
+  --ll-color-border: #d8d8cf;
+  --ll-color-border-strong: #A3A39C;
+  --ll-color-divider: #E6E6E0;
+  --ll-color-text-inverse: #0F4D4C;  /* on-primary：carbon 同色相深色 */
+  --ll-color-brand: #28D4D1;
+  --ll-color-brand-hover: #23BBB8;
+  --ll-color-brand-active: #1FA5A3;
+  --ll-color-brand-light: #D1F0EE;
+  --ll-color-brand-bg: rgba(40, 212, 209, 0.12);
+  --ll-color-info-surface: #E1F3F0;
+  --ll-color-info-border: #B4EBE9;
+  --ll-color-overlay: rgba(18, 22, 28, 0.30);
+  --ll-color-scrim: rgba(0, 0, 0, 0.04);
+  --ll-serial-bg: #F2F2EE;
+  --ll-serial-text: #1a1a18;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+:root[data-palette="carbon"][data-theme="dark"] {
+  --ll-color-canvas: #0B0C0E;
+  --ll-color-bg: #141518;
+  --ll-color-bg-elevated: #0d0e10;
+  --ll-color-surface: #1b1c20;
+  --ll-color-surface-2: #151619;
+  --ll-color-surface-3: #27282C;
+  --ll-color-surface-hover: #2B2C30;
+  --ll-color-row-hover: #313236;
+  --ll-color-surface-active: #112A2B;
+  --ll-color-titlebar: #0d0e10;
+  --ll-color-border: #26282d;
+  --ll-color-border-strong: #5C5D62;
+  --ll-color-divider: #1B1C20;
+  --ll-color-text-inverse: #0F4D4C;  /* on-primary：carbon 同色相深色 */
+  --ll-color-brand: #28D4D1;
+  --ll-color-brand-hover: #4ADBD8;
+  --ll-color-brand-active: #42D9D7;
+  --ll-color-brand-light: #123233;
+  --ll-color-brand-bg: rgba(40, 212, 209, 0.2);
+  --ll-color-info-surface: #1E1F22;
+  --ll-color-info-border: #26282d;
+  --ll-color-overlay: rgba(0, 0, 0, 0.62);
+  --ll-color-scrim: rgba(255, 255, 255, 0.03);
+  --ll-serial-bg: #101214;
+  --ll-serial-text: #e6e7ea;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+/* ---- Nocturne 柔和  accent #8A8BF9 ---- */
+:root[data-palette="nocturne"] {
+  --ll-color-canvas: #E0DEE9;
+  --ll-color-bg: #f3f2fb;
+  --ll-color-bg-elevated: #eceaf5;
+  --ll-color-surface: #f3f2fb;
+  --ll-color-surface-2: #eceaf5;
+  --ll-color-surface-3: #e0def5;
+  --ll-color-surface-hover: #E2E1EB;
+  --ll-color-row-hover: #DBDAE4;
+  --ll-color-surface-active: #E4E4FB;
+  --ll-color-titlebar: #f3f2fb;
+  --ll-color-border: #d2cfe8;
+  --ll-color-border-strong: #9F9DB4;
+  --ll-color-divider: #E1DFF1;
+  --ll-color-text-inverse: #07087E;  /* on-primary：nocturne 同色相深色 */
+  --ll-color-brand: #8A8BF9;
+  --ll-color-brand-hover: #797ADB;
+  --ll-color-brand-active: #6C6CC2;
+  --ll-color-brand-light: #E0DFFB;
+  --ll-color-brand-bg: rgba(138, 139, 249, 0.12);
+  --ll-color-info-surface: #E8E8FB;
+  --ll-color-info-border: #D1D1FA;
+  --ll-color-overlay: rgba(18, 22, 28, 0.30);
+  --ll-color-scrim: rgba(0, 0, 0, 0.04);
+  --ll-serial-bg: #F0EEF8;
+  --ll-serial-text: #1c1b2e;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+:root[data-palette="nocturne"][data-theme="dark"] {
+  --ll-color-canvas: #0D0E1C;
+  --ll-color-bg: #171833;
+  --ll-color-bg-elevated: #0f1020;
+  --ll-color-surface: #1f2240;
+  --ll-color-surface-2: #181A32;
+  --ll-color-surface-3: #2B2E4B;
+  --ll-color-surface-hover: #2F314E;
+  --ll-color-row-hover: #353754;
+  --ll-color-surface-active: #20213E;
+  --ll-color-titlebar: #0f1020;
+  --ll-color-border: #2b2e52;
+  --ll-color-border-strong: #5F6080;
+  --ll-color-divider: #1E203C;
+  --ll-color-text-inverse: #07087E;  /* on-primary：nocturne 同色相深色 */
+  --ll-color-brand: #8A8BF9;
+  --ll-color-brand-hover: #9D9EFA;
+  --ll-color-brand-active: #9899FA;
+  --ll-color-brand-light: #252647;
+  --ll-color-brand-bg: rgba(138, 139, 249, 0.2);
+  --ll-color-info-surface: #22243E;
+  --ll-color-info-border: #2b2e52;
+  --ll-color-overlay: rgba(0, 0, 0, 0.62);
+  --ll-color-scrim: rgba(255, 255, 255, 0.03);
+  --ll-serial-bg: #13142A;
+  --ll-serial-text: #e3e2f5;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+/* ---- Amber 琥珀  accent #D76B38 ---- */
+:root[data-palette="amber"] {
+  --ll-color-canvas: #E7E0D7;
+  --ll-color-bg: #faf6f0;
+  --ll-color-bg-elevated: #f3ece2;
+  --ll-color-surface: #faf6f0;
+  --ll-color-surface-2: #f3ece2;
+  --ll-color-surface-3: #ece2d4;
+  --ll-color-surface-hover: #E9E5DF;
+  --ll-color-row-hover: #E3DFD8;
+  --ll-color-surface-active: #F5E3D6;
+  --ll-color-titlebar: #faf6f0;
+  --ll-color-border: #e3d6c4;
+  --ll-color-border-strong: #AFA394;
+  --ll-color-divider: #EDE4D8;
+  --ll-color-text-inverse: #2A1309;  /* on-primary：amber 同色相深色 */
+  --ll-color-brand: #D76B38;
+  --ll-color-brand-hover: #BD5E31;
+  --ll-color-brand-active: #A8532C;
+  --ll-color-brand-light: #F4DDCF;
+  --ll-color-brand-bg: rgba(215, 107, 56, 0.12);
+  --ll-color-info-surface: #F6E8DE;
+  --ll-color-info-border: #EFCAB5;
+  --ll-color-overlay: rgba(18, 22, 28, 0.30);
+  --ll-color-scrim: rgba(0, 0, 0, 0.04);
+  --ll-serial-bg: #F6F1E9;
+  --ll-serial-text: #2a2118;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
+
+:root[data-palette="amber"][data-theme="dark"] {
+  --ll-color-canvas: #181411;
+  --ll-color-bg: #231b16;
+  --ll-color-bg-elevated: #1c1714;
+  --ll-color-surface: #2c211b;
+  --ll-color-surface-2: #251C18;
+  --ll-color-surface-3: #382D26;
+  --ll-color-surface-hover: #3B312A;
+  --ll-color-row-hover: #413630;
+  --ll-color-surface-active: #362319;
+  --ll-color-titlebar: #1c1714;
+  --ll-color-border: #3a2c22;
+  --ll-color-border-strong: #6C5F56;
+  --ll-color-divider: #2C231C;
+  --ll-color-text-inverse: #2A1309;  /* on-primary：amber 同色相深色 */
+  --ll-color-brand: #D76B38;
+  --ll-color-brand-hover: #DD8358;
+  --ll-color-brand-active: #DC7D50;
+  --ll-color-brand-light: #3E261A;
+  --ll-color-brand-bg: rgba(215, 107, 56, 0.2);
+  --ll-color-info-surface: #2E251F;
+  --ll-color-info-border: #3a2c22;
+  --ll-color-overlay: rgba(0, 0, 0, 0.62);
+  --ll-color-scrim: rgba(255, 255, 255, 0.03);
+  --ll-serial-bg: #201915;
+  --ll-serial-text: #ece3da;
+
+  /* 视觉风格下主导航提升一级：避免亮色风格里主要字发虚 */
+  --ll-color-nav-text: var(--ll-color-text);
+  --ll-fw-nav: var(--ll-fw-medium);
+
+}
