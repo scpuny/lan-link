@@ -805,8 +805,10 @@ fn get_self_info() -> Result<SelfInfo, String> {
 }
 
 /// F1：选择文件（多选）→ 追加到待发送表。原生对话框，取消返回空数组。
+/// 注意：blocking_pick_files 会阻塞调用线程，必须放在 async command（线程池）里执行，
+/// 否则同步 command 在主线程调用会与事件循环死锁（表现为窗口转圈卡死）。
 #[tauri::command]
-fn pick_files(app: tauri::AppHandle) -> Result<Vec<FileEntry>, String> {
+async fn pick_files(app: tauri::AppHandle) -> Result<Vec<FileEntry>, String> {
     bridge_log("pick_files");
     use tauri_plugin_dialog::DialogExt;
     let picked = app.dialog().file().blocking_pick_files();
@@ -819,8 +821,9 @@ fn pick_files(app: tauri::AppHandle) -> Result<Vec<FileEntry>, String> {
 }
 
 /// F1：选择文件夹 → 递归列出其中所有文件追加到待发送表。
+/// 同上：阻塞对话框必须在 async command 线程池中执行，避免主线程死锁。
 #[tauri::command]
-fn pick_folder(app: tauri::AppHandle) -> Result<Vec<FileEntry>, String> {
+async fn pick_folder(app: tauri::AppHandle) -> Result<Vec<FileEntry>, String> {
     bridge_log("pick_folder");
     use tauri_plugin_dialog::DialogExt;
     let folder = app.dialog().file().blocking_pick_folder();
@@ -847,8 +850,9 @@ fn read_clipboard(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 /// F4：选择保存目录并持久化，返回生效路径。取消则保持不变。
+/// 同上：阻塞对话框必须在 async command 线程池中执行，避免主线程死锁。
 #[tauri::command]
-fn choose_save_dir(
+async fn choose_save_dir(
     app: tauri::AppHandle,
     tm: tauri::State<'_, Arc<transfer::TransferManager>>,
 ) -> Result<SaveDirResult, String> {
