@@ -50,6 +50,8 @@ export async function invoke<T = unknown>(cmd: string, args?: InvokeArgs): Promi
       return (await mock.mockConnect((args as any) || {})) as T
     case 'generate_lan_code':
       return (await mock.mockGenerateLanCode()) as T
+    case 'get_lan_code':
+      return (await mock.mockGetLanCode()) as T
     case 'connect_lan_code':
       return (await mock.mockConnectLanCode((args as any) || {})) as T
     case 'scan_lan':

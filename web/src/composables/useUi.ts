@@ -16,6 +16,7 @@ import type {
   TransferTask,
   SendFile,
   TransferProgress,
+  LanCodeResult,
 } from '../types/invite'
 
 export type MainView = 'send' | 'receive' | 'history'
@@ -42,6 +43,8 @@ interface UiState {
   centerState: CenterState
   bridgeMode: 'tauri' | 'mock'
   self: SelfInfo | null
+  /** 本机局域网短码：启动即签发，左轨常驻显示；无网络时为 null */
+  lanCode: LanCodeResult | null
   nearby: NearbyDevice[]
   session: SessionInfo | null
   tasks: TransferTask[]
@@ -80,6 +83,8 @@ const state = reactive<UiState>({
   centerState: 'idle_with_lan',
   bridgeMode: bridgeMode(),
   self: null,
+  /** 本机局域网短码：启动即签发，左轨常驻显示（默认掩码）；无网络时为 null */
+  lanCode: null,
   nearby: [],
   session: null,
   // 原型 main-transferring.png 的传输任务数据
@@ -459,6 +464,7 @@ function applyPreviewParams() {
 async function init() {
   try {
     state.self = await invoke<SelfInfo>('get_self_info')
+    state.lanCode = await invoke<LanCodeResult | null>('get_lan_code')
     state.nearby = await invoke<NearbyDevice[]>('scan_lan')
     await loadSaveDir()
     await loadBlacklistCount()

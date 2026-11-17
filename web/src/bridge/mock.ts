@@ -126,17 +126,35 @@ export async function mockConnect(args: {
 }
 
 /** D4：预览态生成 6 位短码（本地随机，走同一字符集） */
+/** 预览态的常驻短码：模拟「启动即签发」，刷新页面不变 */
+let mockLanCodeCache: LanCodeResult | null = null
+
+/** 读取本机短码（预览态：首次调用即签发并缓存） */
+export async function mockGetLanCode(): Promise<LanCodeResult | null> {
+  if (!mockLanCodeCache) {
+    mockLanCodeCache = {
+      code: 'K7M2QP',
+      serial: randGroups(3),
+      candidates: [{ kind: 'Lan4', value: '192.168.1.24', ready: true }],
+      createdAt: Math.floor(Date.now() / 1000),
+      deviceName: mockSelfInfo.deviceName,
+    }
+  }
+  return mockLanCodeCache
+}
+
 export async function mockGenerateLanCode(): Promise<LanCodeResult> {
   await delay(500)
   let code = ''
   for (let i = 0; i < 6; i++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
-  return {
+  mockLanCodeCache = {
     code,
     serial: randGroups(3),
     candidates: [{ kind: 'Lan4', value: '192.168.1.24', ready: true }],
     createdAt: Math.floor(Date.now() / 1000),
     deviceName: mockSelfInfo.deviceName,
   }
+  return mockLanCodeCache
 }
 
 /** D4：预览态连接短码（模拟广播查询命中） */

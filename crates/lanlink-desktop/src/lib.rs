@@ -10,7 +10,7 @@
 use lanlink_protocol::payload::{AddrKind, Candidate, InvitePayload};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
@@ -52,7 +52,7 @@ pub struct GenerateResult {
 
 /// D4：生成局域网短码的结果。`serial` 是短码背后的完整凭证（经 UDP 递送给查询方），
 /// `code` 是展示给用户的 6 位短码；局域网场景无口令、无 TTL 倒计时（运行期有效）。
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LanCodeResult {
     pub code: String,
@@ -564,14 +564,26 @@ fn connect(
     })
 }
 
-/// D4：生成 6 位局域网短码。只写局域网候选（不暴露公网地址），
-/// 构造标准 serial 注册到发现服务，并启动 TCP host 等待查询方连入握手。
-#[tauri::command]
-fn generate_lan_code(
-    sessions: tauri::State<'_, Arc<session::SessionManager>>,
-    discovery: tauri::State<'_, Arc<discovery::Discovery>>,
+/// 当前生效的局域网短码。启动时即签发一次，之后可「重新生成」覆盖。
+/// 常驻保存是为了左轨信息卡随时可显示，同时让 TCP 42210 从启动就处于可接收状态。
+#[derive(Default)]
+pub struct LanCodeStore(Mutex<Option<LanCodeResult>>);
+
+impl LanCodeStore {
+    fn set(&self, r: LanCodeResult) {
+        *self.0.lock().unwrap() = Some(r);
+    }
+    fn get(&self) -> Option<LanCodeResult> {
+        self.0.lock().unwrap().clone()
+    }
+}
+
+/// 签发局域网短码：只写局域网候选（不暴露公网地址），构造标准 serial 注册到
+/// 发现服务，并启动 TCP host 等待查询方连入握手。
+fn issue_lan_code(
+    sessions: &session::SessionManager,
+    discovery: &discovery::Discovery,
 ) -> Result<LanCodeResult, String> {
-    bridge_log("generate_lan_code");
     let (proto, display) = build_lan_candidates();
     if proto.is_empty() {
         return Err("E010: 未采集到局域网地址（检查是否接入网络）".into());
@@ -583,7 +595,8 @@ fn generate_lan_code(
         ts: now_secs(),
         candidates: proto,
     };
-    let serial = lanlink_protocol::codec::to_serial(&lanlink_protocol::codec::encode_block(&payload, None));
+    let serial =
+        lanlink_protocol::codec::to_serial(&lanlink_protocol::codec::encode_block(&payload, None));
     // 注册短码 → serial，并启动 Initiator 监听（与外网序列号共用 host 上下文）
     discovery.register_code(code.clone(), serial.clone());
     let _ = sessions.start_host(payload);
@@ -595,6 +608,40 @@ fn generate_lan_code(
         created_at: now_secs() as u64,
         device_name: device_name(),
     })
+}
+
+/// D4：重新生成本机局域网短码（旧短码立即失效）。
+#[tauri::command]
+fn generate_lan_code(
+    sessions: tauri::State<'_, Arc<session::SessionManager>>,
+    discovery: tauri::State<'_, Arc<discovery::Discovery>>,
+    store: tauri::State<'_, Arc<LanCodeStore>>,
+) -> Result<LanCodeResult, String> {
+    bridge_log("generate_lan_code");
+    let r = issue_lan_code(&sessions, &discovery)?;
+    store.set(r.clone());
+    Ok(r)
+}
+
+/// 读取当前短码；若启动时因网络未就绪没签发成功，这里补签一次。
+#[tauri::command]
+fn get_lan_code(
+    sessions: tauri::State<'_, Arc<session::SessionManager>>,
+    discovery: tauri::State<'_, Arc<discovery::Discovery>>,
+    store: tauri::State<'_, Arc<LanCodeStore>>,
+) -> Result<Option<LanCodeResult>, String> {
+    bridge_log("get_lan_code");
+    if let Some(r) = store.get() {
+        return Ok(Some(r));
+    }
+    match issue_lan_code(&sessions, &discovery) {
+        Ok(r) => {
+            store.set(r.clone());
+            Ok(Some(r))
+        }
+        // 无网络时不报错：界面显示「未获取」即可，避免首屏弹错误
+        Err(_) => Ok(None),
+    }
 }
 
 /// D4：用 6 位短码连接局域网持有方。先广播 LQ 换取 serial，再走标准握手 FSM。
@@ -997,7 +1044,21 @@ pub fn run() {
                     default_save_dir(),
                 ));
                 app.manage(tm.clone());
-                app.manage(Arc::new(session::SessionManager::new(tm)));
+                let sessions = Arc::new(session::SessionManager::new(tm));
+                app.manage(sessions.clone());
+
+                // 启动即签发局域网短码：左轨常驻显示，且接收通道（TCP 42210）从启动
+                // 就可用，不必先点「生成」。无网络时静默失败，之后 get_lan_code 会补签。
+                let store = Arc::new(LanCodeStore::default());
+                let disc = app.state::<Arc<discovery::Discovery>>();
+                match issue_lan_code(&sessions, &disc) {
+                    Ok(r) => store.set(r),
+                    Err(e) => {
+                        #[cfg(debug_assertions)]
+                        eprintln!("[lanlink-lancode] 启动签发失败: {e}");
+                    }
+                }
+                app.manage(store);
             }
 
             // 开发期输出实际生效的窗口属性，便于核对平台配置是否被合并：
@@ -1051,6 +1112,7 @@ pub fn run() {
             decode_serial,
             connect,
             generate_lan_code,
+            get_lan_code,
             connect_lan_code,
             scan_lan,
             get_self_info,

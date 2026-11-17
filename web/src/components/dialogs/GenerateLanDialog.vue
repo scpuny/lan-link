@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import Modal from '../common/Modal.vue'
 import Icon from '../common/Icon.vue'
 import { useUi } from '../../composables/useUi'
@@ -20,6 +20,8 @@ async function generate() {
   try {
     const r = await invoke<LanCodeResult>('generate_lan_code')
     result.value = r
+    // 左轨信息卡与弹窗共用同一份短码，重新生成后立即同步
+    state.lanCode = r
     phase.value = 'done'
     await copyCode()
   } catch (e) {
@@ -49,6 +51,15 @@ function startTimer() {
 }
 function stopTimer() { if (timer) { clearInterval(timer); timer = null } }
 onBeforeUnmount(stopTimer)
+
+// 启动即已签发短码：打开弹窗直接展示当前那份，不必先看到「尚未生成」再手动点一次
+onMounted(() => {
+  if (state.lanCode) {
+    result.value = state.lanCode
+    phase.value = 'done'
+    startTimer()
+  }
+})
 
 const elapsedText = computed(() => `${Math.floor(elapsed.value / 60)}:${String(elapsed.value % 60).padStart(2, '0')}`)
 const badge = computed(() => phase.value === 'done' ? { text: '✓ 广播中', v: 'success' as const } : null)

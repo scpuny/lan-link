@@ -1,11 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import Icon from '../common/Icon.vue'
 import { useUi } from '../../composables/useUi'
 import { HISTORY_POLICY } from '../../data/views'
 import { SEND_LOCKED as L } from '../../data/send'
 
-const { state, openDialog, navigate, receiveBadge, historyBadge } = useUi()
+const { state, openDialog, navigate, receiveBadge, historyBadge, showToast } = useUi()
+
+/** 左轨短码默认掩码，点眼睛才展开（截图 / 投屏时不泄露） */
+const showCode = ref(false)
+
+async function copyLanCode() {
+  const code = state.lanCode?.code
+  if (!code) {
+    showToast('短码尚未生成 · 请检查网络后重试')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(code)
+    showToast(`短码已复制 · ${code}`)
+  } catch {
+    showToast('复制失败 · 请点眼睛展开后手动选择')
+  }
+}
 
 interface Cap { label: string; value: string; tone: 'ok' | 'warn' | 'danger' | 'muted'; icon: string }
 
@@ -109,6 +126,23 @@ const receiveCaps: Cap[] = [
           <span class="addr-k">STUN</span>
           <span class="addr-v ll-mono ll-truncate" :title="selfCard.stun">{{ selfCard.stun }}</span>
         </div>
+        <!-- 局域网短码：启动即签发、运行期常驻；默认掩码，眼睛展开、可一键复制 -->
+        <div class="addr-row">
+          <span class="addr-k">短码</span>
+          <span class="addr-v ll-mono ll-truncate code-val">
+            {{ showCode ? (state.lanCode?.code || '—') : '******' }}
+          </span>
+          <button
+            class="addr-act"
+            :title="showCode ? '隐藏短码' : '显示短码'"
+            @click="showCode = !showCode"
+          >
+            <Icon :name="showCode ? 'eyeOff' : 'eye'" :size="12" />
+          </button>
+          <button class="addr-act" title="复制短码" @click="copyLanCode">
+            <Icon name="copy" :size="12" />
+          </button>
+        </div>
       </div>
     </div>
 
@@ -203,6 +237,23 @@ const receiveCaps: Cap[] = [
 .addr-row { display: flex; align-items: center; gap: var(--ll-space-1); font-size: var(--ll-fs-xs); }
 .addr-k { color: var(--ll-color-text-tertiary); width: 32px; flex: none; }
 .addr-v { color: var(--ll-color-text-secondary); flex: 1; }
+.code-val { letter-spacing: 1.5px; color: var(--ll-color-text); font-weight: var(--ll-fw-medium); }
+.addr-act {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ll-color-text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color var(--ll-duration-fast), background var(--ll-duration-fast);
+}
+.addr-act:hover { color: var(--ll-color-brand); background: var(--ll-color-surface-hover); }
 
 .rail-nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-item {
