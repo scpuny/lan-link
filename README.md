@@ -104,6 +104,10 @@ cd web && npm run build
 # 产物 target/debug/lanlink-desktop，拷到另一台机器后 chmod +x 并运行
 ```
 
+> ⚠️ 必须走 `tauri build`（脚本已封装）。直接 `cargo build` 编出的 debug 二进制仍指向 devUrl `127.0.0.1:5173`，脱离 Vite 会**白屏**。
+>
+> 资源占用实测：主进程 ~25 MB，含 WebKit 子进程整组 ~58 MB，空闲 CPU 接近 0——低配机即可联调。
+
 完整步骤（短码 / 序列号两条路径、防火墙、连通性自检、架构限制）见 [`docs/joint-debug-guide.md`](docs/joint-debug-guide.md)。
 
 ## 调试开关

@@ -1,8 +1,19 @@
 # LanLink 双机联调指南（无需发包）
 
-> 目标：在没有安装包、`tauri build` 未执行的情况下，用两台机器跑通端到端（握手 + 传输）。
-> 结论：**把本机编译出的裸二进制拷到第二台机器即可**，第二台不需要装 Rust / Node / npm 任何开发环境，也不需要发包。
-> 验证日期：2026-11-16（本机 x86_64 Intel Mac，macOS）。
+> 目标：在没有安装包的情况下，用两台机器跑通端到端（握手 + 传输）。
+> 结论：**用 `tauri build --no-bundle` 编出内嵌前端的二进制，拷到第二台机器即可**，第二台不需要装 Rust / Node / npm 任何开发环境。
+> 验证日期：2026-11-17（本机 x86_64 Intel Mac，macOS）。
+
+---
+
+## 0. ⚠️ 最容易踩的坑：必须用 `tauri build`，不能用 `cargo build`
+
+| 命令 | 结果 |
+| --- | --- |
+| `cargo build -p lanlink-desktop` | ❌ **界面白屏**。debug profile 下编出的二进制仍指向 `devUrl`（`127.0.0.1:5173`），脱离 Vite 就没有页面 |
+| `tauri build --debug --no-bundle` | ✅ **正常渲染**。`tauri build` 才会把 `frontendDist`（`web/dist`）真正嵌入二进制 |
+
+判断方法：`strings target/debug/lanlink-desktop | grep -E "assets/index-.*\.(js|css)"`，能搜到 hashed 资源名才算嵌入成功。脚本 `scripts/build-portable.sh` 已封装正确命令并自动做这个自检。
 
 ---
 
@@ -10,10 +21,11 @@
 
 | 验证项 | 结果 | 证据 |
 | --- | --- | --- |
-| 前端是否内嵌 | ✅ 是 | `web/dist` 在编译期由 `tauri.conf.json` 的 `frontendDist` 嵌入二进制；断电 Vite 后直接跑二进制，5173 端口全程空闲仍正常出界面 |
+| 前端是否内嵌 | ✅ 是（须用 `tauri build`） | 5173 端口全程空闲仍正常渲染界面，`strings` 可查到 `assets/index-*.js/css` |
 | 二进制是否自包含 | ✅ 是 | `otool -L` 只依赖 macOS 系统框架（WebKit / AppKit / Foundation / libSystem），无第三方 `.dylib` |
 | 网络是否允许跨机 | ✅ 是 | TCP 42210 与 UDP 42211 都绑 `0.0.0.0`（非 127.0.0.1），见 `session.rs:90`、`discovery.rs:218` |
 | 短码是否跨机 | ✅ 是 | 广播用「每个网卡的子网广播地址 + 255.255.255.255」，LA 应答回填来源地址拨号，见 `discovery.rs:132` / `lib.rs:602` |
+| 资源占用 | 很低 | 主进程 ~25 MB，含 WebKit 渲染进程整组 ~58 MB；空闲 CPU 接近 0（见 §6） |
 | 二进制体积 | 35 MB | `target/debug/lanlink-desktop` |
 
 **唯一硬性前提**：两台机器 CPU 架构要一致（见 §4.1）。
@@ -130,14 +142,25 @@ nc -vz -G 3 A_IP 42210 && echo "TCP 42210 通" || echo "TCP 42210 不通（查�
 
 ---
 
-## 6. 构建脚本用法
+## 6. 构建脚本用法与资源占用
 
 `scripts/build-portable.sh`：
 ```bash
 ./scripts/build-portable.sh          # 刷新前端 + debug 二进制（联调够用，快）
 ./scripts/build-portable.sh --release # release 二进制（更小更快，编译久）
 ```
-脚本会打印产物路径、体积、架构、动态库依赖，便于核对是否可移植。
+脚本会打印产物路径、体积、架构、动态库依赖，并自动校验「前端是否真的嵌入」（打印 `前端内嵌 : ✓`）。
+
+### 资源占用实测（2026-11-17，x86_64 Intel Mac / macOS 15.7）
+
+| 进程 | 物理内存 |
+| --- | --- |
+| lanlink-desktop 主进程 | ~25 MB |
+| WebKit 渲染/GPU/网络子进程（3 个） | ~33 MB |
+| **整组合计** | **~58 MB** |
+| 空闲 CPU | 接近 0（事件循环等待，`sample` 采样无忙等） |
+
+结论：**任何能跑 Chrome 的机器都绰绰有余**，老笔记本、低配办公机均可。内存/CPU 不是联调门槛，真正的门槛只有「同网段 + CPU 架构一致 + 允许传入连接」。
 
 ---
 
