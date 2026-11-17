@@ -85,6 +85,37 @@ Linux 产物由 CI 在 `ubuntu-22.04` 上构建。**glibc ≥ 2.34** 与**系统
 
 > 老机器（18.04 / UOS V20 / 麒麟 V10）跑不了 Tauri v2，这是 webkit2gtk 4.1 与 glibc 2.34 的双重硬约束，不能靠自带库绕过。若确有需求，方向是把 Rust 核心拆成无 GUI 本地服务、UI 交给系统浏览器，而非继续在 Tauri 上打补丁。
 
+### 在虚拟机 / 无 GPU 环境运行
+
+VirtualBox、VMware、QEMU 这类环境没有可用的硬件 OpenGL，WebKitGTK 默认走的 DMABUF + 合成器会一直等 GPU 信号。典型症状是**窗口能画出来，但整机界面逐渐冻结，CPU 占用接近 0，最后连 SSH 都不响应**（不是算力不够，是图形栈阻塞）。
+
+程序启动时会读 `/sys/class/dmi/id/product_name` 与 `sys_vendor` 自动识别虚拟机，识别到就设置 `WEBKIT_DISABLE_COMPOSITING_MODE=1`、`WEBKIT_DISABLE_DMABUF_RENDERER=1`、`LIBGL_ALWAYS_SOFTWARE=1`，无需手动干预。
+
+宿主机侧还有三项需要人工确认，缺一项都可能让虚拟机变卡：
+
+| 项 | 正确值 | 说明 |
+| --- | --- | --- |
+| 3D 加速 | **关闭** | macOS 主机的 VirtualBox 不提供可用 3D 后端，开启后 vmwgfx 会卡在等 GPU 完成信号 |
+| 客户机分辨率 | **≤ 1920×1080** | 关闭 3D 后 VBox 可能把模式重置到 3840×2160，llvmpipe 要填 830 万像素/帧，等于 8 倍负载 |
+| 窗口合成器 | **关闭** | Xfce 的 `xfwm4` 合成（`/general/use_compositing`）会让每次重绘多一次全屏合成 |
+
+对应的命令行操作：
+
+```bash
+VBoxManage modifyvm <vm> --accelerate3d off
+VBoxManage setextradata <vm> GUI/MaxGuestResolution "1440,900"
+# 客户机内：
+xfconf-query -c xfwm4 -p /general/use_compositing -s false
+```
+
+裸机但无 GPU 的场景（xrdp 远程桌面、Xvfb、容器）用脚本兜底：
+
+```bash
+./scripts/run-linux.sh                 # 自动查找已安装的 lanlink-desktop
+./scripts/run-linux.sh /path/to/bin    # 或指定路径
+FORCE_SOFTWARE_GL=0 ./scripts/run-linux.sh   # 有真实 GPU 时关掉软件渲染
+```
+
 ## 开发
 
 ```bash

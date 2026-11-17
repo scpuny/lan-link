@@ -37,6 +37,9 @@ struct Wire {
 #[derive(Clone)]
 pub struct SessionManager {
     blacklist: Arc<Mutex<HashSet<[u8; 16]>>>,
+    /// host 生成的原始 payload。每次连入都用它 new 一个全新的 InitiatorFsm，
+    /// 避免同一个 FSM 用过一次进入 ATrans 后无法服务第二次连接（短码可反复使用）。
+    host_payload_raw: Arc<Mutex<Option<InvitePayload>>>,
     /// host 生成的 payload（含 session_id），供连入方计算应答
     host_payload: Arc<Mutex<Option<InitiatorFsm>>>,
     /// 最近一次握手结果摘要（供 UI 展示真实 RTT / 对端）
@@ -49,6 +52,7 @@ impl SessionManager {
     pub fn new(transfer: Arc<TransferManager>) -> Self {
         Self {
             blacklist: Arc::new(Mutex::new(HashSet::new())),
+            host_payload_raw: Arc::new(Mutex::new(None)),
             host_payload: Arc::new(Mutex::new(None)),
             last_rtt_ms: Arc::new(Mutex::new(0)),
             transfer,
@@ -73,13 +77,17 @@ impl SessionManager {
             }
             *h = None;
         }
+        if let Ok(mut raw) = self.host_payload_raw.lock() {
+            *raw = None;
+        }
     }
 
     /// 启动 host（Initiator）：注册生成的 payload，并在 DATA_PORT 监听连入。
     /// 每次生成都覆盖 host 上下文；监听线程存活于进程期，逐次读取当前上下文。
     pub fn start_host(&self, payload: InvitePayload) -> std::io::Result<()> {
         let mut fsm = InitiatorFsm::new();
-        let _ = fsm.on_generated(payload);
+        let _ = fsm.on_generated(payload.clone());
+        *self.host_payload_raw.lock().unwrap() = Some(payload);
         *self.host_payload.lock().unwrap() = Some(fsm);
 
         // 监听线程只启动一次（端口占用即认为已在监听）
@@ -129,14 +137,24 @@ impl SessionManager {
             }
         };
 
-        // 用当前 host 上下文计算应答（FSM 状态机驱动，不手写摘要）
+        // 用当前 host 上下文计算应答（FSM 状态机驱动，不手写摘要）。
+        // 每次连入都基于原始 payload 新建一个 FSM，并走完整状态链：
+        //   on_generated → on_incoming_connect → on_challenge → on_response_accepted
+        // 少了 on_incoming_connect 会停留在 ADial 而被 on_challenge 判 E008；
+        // 复用旧 FSM 会在第二次连接时因 ATrans 失败，短码按设计需可反复使用。
         let response = {
-            let mut guard = self.host_payload.lock().unwrap();
-            match guard.as_mut() {
-                Some(fsm) => {
+            let raw = self.host_payload_raw.lock().unwrap().clone();
+            match raw {
+                Some(payload) => {
+                    let mut fsm = InitiatorFsm::new();
+                    let _ = fsm.on_generated(payload);
+                    let _ = fsm.on_incoming_connect(); // ADial → AWaitChallenge
                     let act = fsm.on_challenge(ch);
                     match act {
-                        InitiatorAction::SendResponse(r) => Some(r),
+                        InitiatorAction::SendResponse(r) => {
+                            let _ = fsm.on_response_accepted();
+                            Some(r)
+                        }
                         _ => None,
                     }
                 }
@@ -148,12 +166,6 @@ impl SessionManager {
                 let _ = write_wire(&mut stream, &Wire {
                     t: "response".into(), v: to_hex(&r), c: String::new(),
                 });
-                // 标记进入传输态
-                if let Ok(mut guard) = self.host_payload.lock() {
-                    if let Some(fsm) = guard.as_mut() {
-                        let _ = fsm.on_response_accepted();
-                    }
-                }
                 // F18–F23：生成方（host）作为接收方，接管连接落盘 + 整文件校验。
                 #[cfg(debug_assertions)]
                 eprintln!("[lanlink-session] initiator handshake OK, entering recv_files");
@@ -167,6 +179,8 @@ impl SessionManager {
 
     /// Receiver 侧：拨号候选地址 → FSM 校验 → challenge → 应答比对 → 建立。
     /// 返回 (对端地址, 真实 RTT ms)；失败返回带错误码的字符串。
+    /// `check_ttl`：外网序列号必须校验 900s 时效；局域网短码按 PRD 无有效期，传 false。
+    /// `remember_session`：成功后是否把 session_id 写入黑名单；短码需可反复连接，传 false。
     pub fn connect_as_receiver(
         &self,
         serial: &str,
@@ -174,6 +188,8 @@ impl SessionManager {
         candidates: &[String],
         ttl_secs: u64,
         files: Vec<TransferFile>,
+        check_ttl: bool,
+        remember_session: bool,
     ) -> Result<(String, u32), String> {
         let started = Instant::now();
         let now = std::time::SystemTime::now()
@@ -185,7 +201,7 @@ impl SessionManager {
         let mut fsm = ReceiverFsm::new();
         let action = {
             let bl = self.blacklist.lock().unwrap();
-            fsm.connect(serial, password, now, &bl, ttl_secs)
+            fsm.connect_with(serial, password, now, &bl, ttl_secs, check_ttl)
         }; // 及时释放黑名单锁，避免后续嵌套加锁死锁
         match action {
             ReceiverAction::SendChallenge(ch) => {
@@ -203,8 +219,11 @@ impl SessionManager {
                     .ok_or_else(|| "E008: 应答格式错误".to_string())?;
                 match fsm.verify_response(resp) {
                     ReceiverAction::Established(payload) => {
-                        // 建立成功：写入黑名单（BR-02），防重放
-                        self.blacklist.lock().unwrap().insert(payload.session_id);
+                        // 建立成功：写入黑名单（BR-02），防重放。
+                        // 局域网短码按设计可反复连接，不写入，否则第二次即 E005。
+                        if remember_session {
+                            self.blacklist.lock().unwrap().insert(payload.session_id);
+                        }
                         let rtt = started.elapsed().as_millis().min(u32::MAX as u128) as u32;
                         *self.last_rtt_ms.lock().unwrap() = rtt;
                         let addr = candidates.first().cloned().unwrap_or_default();

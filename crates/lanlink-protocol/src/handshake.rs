@@ -72,6 +72,22 @@ impl ReceiverFsm {
         blacklist: &HashSet<[u8; 16]>,
         ttl_secs: u64,
     ) -> ReceiverAction {
+        self.connect_with(serial, password, now_secs, blacklist, ttl_secs, true)
+    }
+
+    /// 与 [`connect`] 相同的校验链，但可关闭 TTL 时效窗口。
+    ///
+    /// 局域网短码（D4）按 PRD 不设有效期、可反复使用，其底层 serial 虽带 `ts`，
+    /// 但语义上不应触发 E004；外网序列号仍必须保留 TTL 校验。
+    pub fn connect_with(
+        &mut self,
+        serial: &str,
+        password: Option<&[u8]>,
+        now_secs: u64,
+        blacklist: &HashSet<[u8; 16]>,
+        ttl_secs: u64,
+        check_ttl: bool,
+    ) -> ReceiverAction {
         // 步骤 1-2：清洗 + Base32 解码
         self.state = ReceiverState::SParseClean;
         let block = match codec::from_serial(serial) {
@@ -87,10 +103,10 @@ impl ReceiverFsm {
         };
         self.state = ReceiverState::SParsePayload;
 
-        // 步骤 5：TTL 时效窗口
+        // 步骤 5：TTL 时效窗口（局域网短码不检查）
         self.state = ReceiverState::SCheckTtl;
         let elapsed = now_secs as i64 - invite.ts as i64;
-        if elapsed > ttl_secs as i64 {
+        if check_ttl && elapsed > ttl_secs as i64 {
             return self.fail(ProtocolError::e004());
         }
 
@@ -365,6 +381,29 @@ mod tests {
         };
         assert_eq!(resp, crypto::challenge_response(&p.session_id, &challenge));
         assert!(matches!(a.on_response_accepted(), InitiatorAction::Established));
+    }
+
+    /// 回归：局域网短码复用带 ts 的 serial，但按 PRD 无有效期，
+    /// 即使时间戳远超 TTL 也不得判 E004。
+    #[test]
+    fn lan_code_skips_ttl() {
+        let p = payload();
+        let serial = codec::encode_serial(&p, None);
+        let mut fsm = ReceiverFsm::new();
+        let blacklist = HashSet::new();
+        // 时间推进一天，远超 900s TTL
+        let far_future = p.ts as u64 + 86400;
+        let action = fsm.connect_with(&serial, None, far_future, &blacklist, 900, false);
+        match action {
+            ReceiverAction::SendChallenge(_) => {}
+            other => panic!("short code must ignore TTL, got {:?}", other),
+        }
+        // 对照组：外网序列号在同一时刻必须被判过期
+        let mut serial_fsm = ReceiverFsm::new();
+        match serial_fsm.connect(&serial, None, far_future, &blacklist, 900) {
+            ReceiverAction::Failed(e) => assert_eq!(e.code, "E004"),
+            other => panic!("serial must enforce TTL, got {:?}", other),
+        }
     }
 
     #[test]

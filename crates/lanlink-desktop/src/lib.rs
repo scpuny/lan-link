@@ -552,6 +552,8 @@ fn connect(
         &candidates,
         lanlink_protocol::DEFAULT_TTL_SECS,
         files.unwrap_or_default(),
+        true,  // 外网序列号：必须校验 900s TTL
+        true,  // 一次性凭证：成功后写黑名单防重放
     )?;
     Ok(SessionInfo {
         peer_name: "远端设备".into(),
@@ -600,6 +602,10 @@ fn issue_lan_code(
     // 注册短码 → serial，并启动 Initiator 监听（与外网序列号共用 host 上下文）
     discovery.register_code(code.clone(), serial.clone());
     let _ = sessions.start_host(payload);
+
+    // 双机联调时从终端直接读到明码，免去在 GUI 里点眼睛图标；release 不输出。
+    #[cfg(debug_assertions)]
+    eprintln!("[lanlink-lancode] 已签发 code={code} candidates={display:?}");
 
     Ok(LanCodeResult {
         code,
@@ -679,12 +685,15 @@ fn connect_lan_code(
             ordered.push(c);
         }
     }
+    // 局域网短码按 PRD 无有效期、可反复连接：跳过 TTL 校验与一次性黑名单。
     let (peer, rtt) = sessions.connect_as_receiver(
         &serial,
         None,
         &ordered,
         lanlink_protocol::DEFAULT_TTL_SECS,
         files.unwrap_or_default(),
+        false, // 不校验 TTL（短码永久有效）
+        false, // 不写黑名单（短码可重复使用）
     )?;
     Ok(SessionInfo {
         peer_name: "局域网设备".into(),
