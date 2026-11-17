@@ -95,6 +95,17 @@ cargo check -p lanlink-desktop
 cd web && npm run build
 ```
 
+## 双机联调（无需发包）
+
+前端已内嵌进二进制，编译产物只依赖 macOS 系统框架，**可直接拷到另一台同架构机器运行**，第二台不需要 Rust / Node 环境：
+
+```bash
+./scripts/build-portable.sh      # 刷新前端 + debug 二进制（联调够用）
+# 产物 target/debug/lanlink-desktop，拷到另一台机器后 chmod +x 并运行
+```
+
+完整步骤（短码 / 序列号两条路径、防火墙、连通性自检、架构限制）见 [`docs/joint-debug-guide.md`](docs/joint-debug-guide.md)。
+
 ## 调试开关
 
 - `?bridge=mock`：真机强制走内存 mock，用于真/Rust 输出 A/B 对比
