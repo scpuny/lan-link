@@ -1,0 +1,110 @@
+name: build-linux
+
+# macOS 无法交叉编译 Tauri 的 Linux 产物（需要 GTK3 + WebKitGTK4.1 + libsoup3 + Linux 链接器），
+# 因此 Linux 二进制统一在 ubuntu-22.04 runner 上构建。
+# 注意：产物要求目标机有 webkit2gtk 4.1（Ubuntu 22.04+ / Debian 12+）。
+# 若目标机是 Ubuntu 18.04（只有 webkit2gtk 4.0），请用 deploy/linux 下的容器方案运行。
+
+on:
+  push:
+    branches: [dev, main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 需要写 Release 才能挂产物
+
+concurrency:
+  group: build-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Linux 构建依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            build-essential \
+            file
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: 前端依赖与构建
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: 编译 Tauri（裸二进制）
+        working-directory: crates/lanlink-desktop
+        run: ../../web/node_modules/.bin/tauri build --no-bundle
+
+      - name: 打包 .deb（失败不阻塞）
+        working-directory: crates/lanlink-desktop
+        continue-on-error: true
+        run: ../../web/node_modules/.bin/tauri build --bundles deb
+
+      - name: 归档产物
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          BIN=target/release/lanlink-desktop
+          test -x "$BIN" || { echo "找不到二进制：$BIN"; ls -R target/release | head -40; exit 1; }
+          cp "$BIN" out/lanlink-desktop
+          strip out/lanlink-desktop || true
+          tar -czf out/lanlink-linux-x86_64.tar.gz -C out lanlink-desktop
+          if compgen -G "target/release/bundle/deb/*.deb" > /dev/null; then
+            cp target/release/bundle/deb/*.deb out/
+          else
+            echo "未生成 .deb，跳过"
+          fi
+          # 动态库依赖清单，排障用
+          ldd "$BIN" > out/ldd.txt || true
+          ls -lh out
+          echo "--- 依赖的 webkit/soup 版本 ---"
+          ldd "$BIN" | grep -iE "webkit|soup|gtk" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lanlink-linux-x86_64
+          path: out/*
+          if-no-files-found: error
+
+      # 产出一个固定 URL 的 Release，方便目标机直接 curl 下载（无需 token）
+      - name: 发布到 linux-latest
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: linux-latest
+          name: LanLink Linux (rolling)
+          body: |
+            由 GitHub Actions 自动构建，对应提交 ${{ github.sha }}（分支 `${{ github.ref_name }}`）。
+
+            产物：
+            - `lanlink-linux-x86_64.tar.gz` — 裸二进制，运行环境需 webkit2gtk 4.1（Ubuntu 22.04+）
+            - `*.deb` — Debian/Ubuntu 安装包
+          prerelease: true
+          files: out/*
+          overwrite_files: true
