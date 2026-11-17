@@ -239,12 +239,34 @@ fn bridge_log(cmd: &str) {
 #[cfg(not(debug_assertions))]
 fn bridge_log(_cmd: &str) {}
 
+/// 本机设备名。优先环境变量（便于一台机器跑多实例测试），其次系统真实主机名。
+///
+/// 不能只依赖环境变量：macOS 从 Finder / launchd 启动的 GUI 进程没有 `HOSTNAME`，
+/// 会让所有机器都回退成同一个默认名，进而算出相同的设备 ID，互相之间看不到（见
+/// `discovery.rs` 的自过滤）。设备 ID 由名字哈希而来，同名即同 ID。
 fn device_name() -> String {
     #[cfg(target_os = "windows")]
     let key = "COMPUTERNAME";
     #[cfg(not(target_os = "windows"))]
     let key = "HOSTNAME";
-    std::env::var(key).unwrap_or_else(|_| "LanLink-Device".into())
+
+    if let Ok(v) = std::env::var(key) {
+        let t = v.trim();
+        if !t.is_empty() {
+            return t.to_string();
+        }
+    }
+
+    if let Ok(h) = hostname::get() {
+        let s = h.to_string_lossy();
+        // macOS 的主机名常带 `.local` 后缀，去掉让界面更清爽
+        let s = s.trim().trim_end_matches(".local");
+        if !s.is_empty() && s != "localhost" {
+            return s.to_string();
+        }
+    }
+
+    "LanLink-Device".into()
 }
 
 /// 前端候选种类 → 协议层地址类型。ULA 归到 Lan6（都在 IPv6 段）。

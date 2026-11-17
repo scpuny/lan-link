@@ -86,6 +86,25 @@ jobs:
           echo "--- 依赖的 webkit/soup 版本 ---"
           ldd "$BIN" | grep -iE "webkit|soup|gtk" || true
 
+      # 防止将来把 runner 换成 ubuntu-24.04 时，无意中抬高 glibc 地板、缩小可运行范围。
+      # 2.34 = RHEL 9 / Ubuntu 22.04 这一代的最低公共水位。
+      - name: glibc 地板守卫（不得高于 2.34）
+        run: |
+          set -euo pipefail
+          BIN=target/release/lanlink-desktop
+          MAX=$({ readelf -V "$BIN" 2>/dev/null || true; objdump -T "$BIN" 2>/dev/null || true; } \
+                | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sed 's/GLIBC_//' | sort -Vu | tail -1)
+          echo "二进制要求的最高 glibc 符号版本：${MAX:-<未检出>}（上限 2.34）"
+          if [ -z "$MAX" ]; then
+            echo "::error::未能从二进制中检出 GLIBC 版本符号，检查 /usr/bin 工具链"
+            exit 1
+          fi
+          if [ "$(printf '%s\n2.34\n' "$MAX" | sort -V | tail -1)" = "$MAX" ] && [ "$MAX" != "2.34" ]; then
+            echo "::error::glibc 地板被抬高到 $MAX（> 2.34），这会让 Ubuntu 22.04 / RHEL 9 用户装不上。请检查 runner 镜像版本。"
+            exit 1
+          fi
+          echo "✓ 地板正常，可覆盖 Ubuntu 22.04+ / Debian 12+ / RHEL 9+"
+
       - uses: actions/upload-artifact@v4
         with:
           name: lanlink-linux-x86_64

@@ -102,6 +102,15 @@ impl Discovery {
         self.discoverable.load(Ordering::Relaxed)
     }
 
+    /// 判定报文是否来自本机自己。
+    ///
+    /// 只比设备 ID 不够：ID 是主机名的哈希，两台同名机器（或都回退到默认名
+    /// `LanLink-Device`）会算出同一个 ID，于是互相把对方当成自己而永远看不到。
+    /// 本机已知 Lan4 时再用源 IP 兜底区分。
+    fn is_self(&self, id: &str, src_ip: &str) -> bool {
+        id == self.self_id && (self.self_lan4.is_empty() || src_ip == self.self_lan4)
+    }
+
     /// D4：注册本机持有的短码（重新生成会覆盖旧码）。
     pub fn register_code(&self, code: String, serial: String) {
         self.codes.lock().unwrap().insert(code, serial);
@@ -179,7 +188,7 @@ impl Discovery {
                 false
             }
             "LA" => {
-                if p.q.is_empty() || p.s.is_empty() || p.id == self.self_id {
+                if p.q.is_empty() || p.s.is_empty() || self.is_self(&p.id, &from.ip().to_string()) {
                     return false;
                 }
                 self.answers.lock().unwrap().entry(p.q).or_default().push(LanAnswer {
@@ -189,7 +198,12 @@ impl Discovery {
                 false
             }
             _ => {
-                if p.id == self.self_id {
+                let src_ip = if p.ip.is_empty() {
+                    from.ip().to_string()
+                } else {
+                    p.ip.clone()
+                };
+                if self.is_self(&p.id, &src_ip) {
                     return false;
                 }
                 let recv_ms = now_millis();

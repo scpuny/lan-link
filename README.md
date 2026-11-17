@@ -63,6 +63,28 @@ lanLink/
 - Tauri v2 系统依赖（[官方文档](https://v2.tauri.app/start/prerequisites/)）
 - macOS 需 Xcode Command Line Tools
 
+### Linux 运行要求（终端用户）
+
+Linux 产物由 CI 在 `ubuntu-22.04` 上构建。**glibc ≥ 2.34** 与**系统提供 webkit2gtk 4.1** 两个条件必须同时满足：
+
+| 发行版 | glibc | webkit 4.1 | 可运行 |
+| --- | --- | --- | --- |
+| Ubuntu 22.04 / 24.04 | 2.35 / 2.39 | ✅ | ✅ |
+| Debian 12 / 13 | 2.36 | ✅ | ✅ |
+| RHEL 9 / Rocky 9 / Alma 9 | 2.34 | ✅ | ✅（正好卡线） |
+| Fedora 36+ | 2.35+ | ✅ | ✅ |
+| deepin 23+ / UOS V25 / 麒麟 V11 | — | ✅ | ✅ |
+| Ubuntu 20.04、Debian 11 | 2.31 | ❌ 仅 4.0 | ❌ |
+| Ubuntu 18.04 | 2.27 | ❌ 仅 4.0 | ❌ |
+| UOS V20 全系、麒麟桌面 V10 SP1 | 2.28 / 2.31 | ❌ | ❌ |
+
+两点保障：
+
+- `.deb` 已在 `Depends` 声明 `libwebkit2gtk-4.1-0`，不达标的系统会被包管理器**直接拒绝安装**，不会出现"装上了打不开"。
+- CI 有 **glibc 地板守卫**（`build-linux.yml`），一旦构建基线上移导致符号版本超过 2.34 会直接失败，防止无意收窄可运行范围。
+
+> 老机器（18.04 / UOS V20 / 麒麟 V10）跑不了 Tauri v2，这是 webkit2gtk 4.1 与 glibc 2.34 的双重硬约束，不能靠自带库绕过。若确有需求，方向是把 Rust 核心拆成无 GUI 本地服务、UI 交给系统浏览器，而非继续在 Tauri 上打补丁。
+
 ## 开发
 
 ```bash

@@ -19,6 +19,8 @@ serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
 walkdir = "2"
 if-addrs = "0.13"
+# 取系统真实主机名：GUI 进程（尤其 macOS 从 Finder 启动）拿不到 HOSTNAME 环境变量
+hostname = "0.4"
 zeroize = "1"
 blake3 = "1"
 
