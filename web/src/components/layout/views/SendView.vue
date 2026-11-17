@@ -446,7 +446,7 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
         </div>
 
         <div class="queue-bar">
-          <span class="ll-text-tertiary"><Icon name="clock" :size="13" class="q-ico" /> 排队中 {{ queuedTasks.length }} 项：{{ queuedTasks[0]?.name }} · 128 MB</span>
+          <span class="ll-text-tertiary"><Icon name="clock" :size="13" class="q-ico" /> 排队中 {{ queuedTasks.length }} 项：{{ queuedTasks[0]?.name }}{{ queuedTasks[0]?.size ? ` · ${fmtSize(queuedTasks[0].size)}` : '' }}</span>
           <span class="ll-link">立即启动</span>
         </div>
       </template>

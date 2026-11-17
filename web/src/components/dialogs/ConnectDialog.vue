@@ -10,7 +10,7 @@ import { invoke } from '../../bridge'
 import { ERRORS, DIAGNOSIS } from '../../data/errors'
 import type { VerifyStep, VerifyStepKey, ErrorCode, ProtocolError, SessionInfo } from '../../types/invite'
 
-const { state, openDialog } = useUi()
+const { state, openDialog, beginTransferSession } = useUi()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const tab = ref<'serial' | 'lan'>('serial')
@@ -138,6 +138,7 @@ async function runConnect() {
     tookMs.value = sess.tookMs
     sessionShort.value = (sess as any).sessionShort || sessionShort.value
     state.session = sess
+    beginTransferSession()
     phase.value = 'connected'
   } catch (e: any) {
     // 真机握手失败：从后端错误串提取 E00x，映射到现有错误卡（不新增硬编码判断）
@@ -185,6 +186,7 @@ async function runLanConnect() {
     })
     tookMs.value = sess.tookMs
     state.session = sess
+    beginTransferSession()
     phase.value = 'connected'
   } catch (e: any) {
     const raw = String(e?.message || e || '')

@@ -87,8 +87,10 @@ const state = reactive<UiState>({
   lanCode: null,
   nearby: [],
   session: null,
-  // 原型 main-transferring.png 的传输任务数据
-  tasks: [
+  // 原型 main-transferring.png 的任务数据仅用于浏览器预览态（mock）。
+  // 真机态必须为空：新选择的文件由 queueSendFiles 预建任务，进度由后端事件更新，
+  // 否则界面永远显示这 3 条 mock，真实文件反而“不进队列”。
+  tasks: hasTauri() ? [] : [
     {
       id: 't1', name: '会议录屏_1114_外网序列号评审.mp4', size: 862_000_000,
       progress: 62, speed: 34_200_000, status: 'transferring',
@@ -389,6 +391,18 @@ async function initTransferEvents() {
   }
 }
 
+/**
+ * 真机建立会话时清空残留的原型/旧任务，让后端 ll-transfer-progress 事件
+ * 从零构建真实队列。否则默认 3 条 mock 任务会一直占据传输面板，
+ * 新选文件发出的进度事件被追加到 mock 后面，用户看起来“新文件不进队列”。
+ */
+function beginTransferSession() {
+  if (!hasTauri()) return
+  state.tasks.splice(0)
+  state.rateHistory.splice(0)
+  recordedTasks.clear()
+}
+
 async function transferCtl(cmd: 'pause' | 'resume' | 'cancel', id: string) {
   try {
     await invoke(`transfer_${cmd}`, { id })
@@ -521,6 +535,7 @@ export function useUi() {
     loadBlacklistCount,
     clearBlacklist,
     applyTransferProgress,
+    beginTransferSession,
     pauseTask,
     resumeTask,
     cancelTask,
