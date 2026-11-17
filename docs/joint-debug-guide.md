@@ -167,3 +167,81 @@ nc -vz -G 3 A_IP 42210 && echo "TCP 42210 通" || echo "TCP 42210 不通（查�
 ## 7. 与 TODO 的对应
 
 本指南服务于 `docs/feature-inventory.md` 的 **TODO-07（双实例端到端联调）**。跑通后请在 TODO-07 的「完成日期 / 验证结果」栏填入实测结果，并把状态改为 ✅。
+
+---
+
+## 8. 备用测试机 192.168.1.11（Ubuntu 18.04）远程桌面
+
+这台机器是 Ubuntu 18.04.6 LTS x86_64，原本只有 SSH，没有远程桌面。已装 **xrdp + Xfce**，可从 Mac 直接图形化操作它跑 LanLink。
+
+### 8.1 连接方式
+
+1. Mac 打开 **Microsoft Remote Desktop**（App Store 免费）→ `Add PC`
+2. PC name 填 `192.168.1.11`，User account 填 `scpun` / 密码
+3. 显示尺寸建议 `1280×800` 或 `1440×900`
+
+终端一键打开也行：
+```bash
+open "rdp://full%20address=s:192.168.1.11"
+```
+
+### 8.2 机器信息
+
+| 项 | 值 |
+| --- | --- |
+| 系统 | Ubuntu 18.04.6 LTS x86_64（架构与本机一致，二进制可直接拷） |
+| 内存 / 磁盘 | 9.9 GB 可用 8 GB；根分区剩 13 GB |
+| 桌面 | GNOME 已在物理控制台 `:0` 登录（未改动）；xrdp 会话独立跑 Xfce |
+| 服务 | `xrdp` + `xrdp-sesman` 均 active，已 `enabled` 开机自启 |
+| 端口 | 3389（RDP）；原有 22（SSH）、80（Python mDNSStudio）未受影响 |
+| 免密登录 | 已把本机 `id_ed25519` 写入 `scpun@192.168.1.11:~/.ssh/authorized_keys` |
+
+Sanity check：
+```bash
+ssh scpun@192.168.1.11 'systemctl is-active xrdp xrdp-sesman; ss -ltn | grep 3389'
+```
+
+### 8.3 重装 / 迁移用脚本
+
+`scripts/install-xrdp-xfce.sh`，幂等，可重复执行：
+```bash
+scp scripts/install-xrdp-xfce.sh scpun@192.168.1.11:/tmp/
+ssh scpun@192.168.1.11 'sudo bash /tmp/install-xrdp-xfce.sh scpun'
+```
+
+脚本做完的事：源可用性判定（不看 `apt-get update` 退出码，看 `xrdp` 有无候选版本）→ 装包 → 修 conffile → 写 `startwm.sh`/`.xsession` → 预置 Xfce 面板配置 → 禁 `nm-applet` → colord polkit 放行 → 放行 3389 → 自检。
+
+### 8.4 本次实际踩到的 5 个坑（都已在脚本里修掉）
+
+| 现象 | 根因 | 处置 |
+| --- | --- | --- |
+| 脚本误判「源挂了」，把 sources.list 改成 old-releases | `download.docker.com` 走 IPv6 握手失败，导致 `apt-get update` 整体非零退出 | 判定改为 `apt-cache policy xrdp` 是否有候选版本；docker 源已注释（备份在 `/var/backups/xrdp-install/docker.list.bak`） |
+| `xrdp` 一启动就 `exit 1`，journal 里**一行日志都没有** | `/etc/xrdp/xrdp.ini` 与 `sesman.ini` 是 **0 字节**（历史 remove 残留 → dpkg 保留空 conffile） | `dpkg-deb -x` 从 deb 提取默认配置覆盖，md5 与 dpkg 记录一致 |
+| `dpkg` 卡在半配置状态 | postinst 里 `systemctl start xrdp` 失败 | `dpkg --configure -a` 修好，状态回到 `ii` |
+| 调优静默失效 | 正则写的是 `[globals]`，实际是 **`[Globals]`**（首字母大写） | 加 `re.I`；并改成先写临时文件再原子替换，避免 0 字节 |
+| 连上后弹「欢迎第一次启动面板」，不点掉没有任务栏 | 用户首次运行 `xfce4-panel` 无配置 | 预置 `~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml` |
+
+另：`nm-applet` 自启会弹「解锁密钥环」，服务器上用不到，已用 `~/.config/autostart/nm-applet.desktop`（`Hidden=true`）屏蔽。
+
+### 8.5 验证方式（已实测通过）
+
+不依赖 Mac 端 GUI，直接在目标机回环自测：`Xvfb` 起一个虚拟屏跑 `xfreerdp` 连 `127.0.0.1:3389`，然后 `import -window root` 截图。实测 sesman 正常拉起：
+
+```
+scpun  Xorg :10 -auth .Xauthority -config xrdp/xorg.conf -noreset -nolisten tcp
+scpun  xrdp-chansrv
+scpun  xfce4-session / xfwm4 / xfdesktop
+```
+
+截图确认：Xfce 壁纸、桌面图标（回收站/文件系统/主文件夹）、顶部面板（whiskermenu + 时钟）、中文字体均正常，无黑屏、无弹窗。测试用的 `freerdp2-x11` / `xvfb` 已 `purge` 清理。
+
+### 8.6 排错入口
+
+```bash
+# xrdp 主服务日志
+ssh scpun@192.168.1.11 'sudo journalctl -u xrdp -n 80 --no-pager'
+# 会话内部（Xorg / xfce 的具体报错）
+ssh scpun@192.168.1.11 'tail -60 ~/.xsession-errors; ls ~/.xorgxrdp.*.log && tail -40 ~/.xorgxrdp.*.log'
+```
+
+黑屏时的典型原因排序：`startwm.sh` 没 exec 到桌面 → `XDG_RUNTIME_DIR` 缺失 → dbus 没起 → 同一用户已有图形控制台会话冲突（必要时先在 `:0` 注销）。

@@ -110,6 +110,15 @@ cd web && npm run build
 
 完整步骤（短码 / 序列号两条路径、防火墙、连通性自检、架构限制）见 [`docs/joint-debug-guide.md`](docs/joint-debug-guide.md)。
 
+Linux 备用测试机（192.168.1.11，Ubuntu 18.04）已装 xrdp + Xfce 远程桌面，Mac 可用 Microsoft Remote Desktop 直连操作；重装/迁移用：
+
+```bash
+scp scripts/install-xrdp-xfce.sh scpun@192.168.1.11:/tmp/
+ssh scpun@192.168.1.11 'sudo bash /tmp/install-xrdp-xfce.sh scpun'
+```
+
+详见 [`docs/joint-debug-guide.md` §8](docs/joint-debug-guide.md)。
+
 ## 调试开关
 
 - `?bridge=mock`：真机强制走内存 mock，用于真/Rust 输出 A/B 对比
