@@ -146,6 +146,8 @@ impl SessionManager {
             let raw = self.host_payload_raw.lock().unwrap().clone();
             match raw {
                 Some(payload) => {
+                    #[cfg(debug_assertions)]
+                    eprintln!("[lanlink-session] initiator serving challenge, sid={:02x?}", &payload.session_id[..4]);
                     let mut fsm = InitiatorFsm::new();
                     let _ = fsm.on_generated(payload);
                     let _ = fsm.on_incoming_connect(); // ADial → AWaitChallenge
@@ -217,6 +219,8 @@ impl SessionManager {
                 }
                 let resp = parse_hex::<32>(&reply.v)
                     .ok_or_else(|| "E008: 应答格式错误".to_string())?;
+                #[cfg(debug_assertions)]
+                eprintln!("[lanlink-session] receiver got response resp={:02x?}", &resp[..4]);
                 match fsm.verify_response(resp) {
                     ReceiverAction::Established(payload) => {
                         // 建立成功：写入黑名单（BR-02），防重放。
