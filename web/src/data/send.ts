@@ -86,6 +86,5 @@ export const SEND_LOCKED = {
   /** 命令栏与状态栏 */
   openSaveDirLabel: '打开保存目录',
   rescanLabel: '重新扫描设备',
-  onlineText: '局域网广播中 · 未发现设备',
   statusText: '就绪 · 未选择文件',
 }

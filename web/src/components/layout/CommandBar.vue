@@ -33,7 +33,7 @@ const onlineText = computed(() => {
   if (view.value === 'receive') return '局域网广播中 · 发现 42211 / 传输 42210'
   if (view.value === 'history') return '本机在线 · 监听 42210'
   if (transferring.value) return '本机在线 · 监听 42210'
-  if (withLan.value) return L.onlineText
+  if (withLan.value) return `局域网广播中 · ${state.nearby.length ? `已发现 ${state.nearby.length} 台` : '未发现设备'}`
   return '本机在线 · 监听 42210'
 })
 
