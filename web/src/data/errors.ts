@@ -125,72 +125,8 @@ export const ERROR_ORDER: ErrorCode[] = [
   'E001', 'E002', 'E003', 'E004', 'E005', 'E006', 'E007', 'E008', 'E009',
 ]
 
-/** 错误态中间的「诊断分区」（原型逐字） */
-export const DIAGNOSIS: Partial<Record<ErrorCode, Diagnosis>> = {
-  E002: {
-    title: 'CRC32 比对（对 flags 至 candidates 全部字节计算）',
-    right: '包体长度 52 字节 · 无压缩',
-    rows: [
-      { k: '本机计算', v: '0x8C3E71A4' },
-      { k: '凭证内值', v: '0x8C3E71A5', tone: 'danger', right: '差异 1 bit' },
-      { k: '结论', v: '包体在传输中被修改，无法确认地址与时间戳未被篡改', tone: 'danger' },
-    ],
-  },
-  E004: {
-    title: '时效校验（TTL = 900s）',
-    right: '本机时间 10:54:18',
-    rows: [
-      { k: '校验结果', v: '超出 21 分 06 秒', tone: 'danger', right: 'TTL 15 分钟' },
-      { k: '生成时间', v: '10:33:12' },
-      { k: '校验时间', v: '10:54:18' },
-      { k: '时钟偏差', v: '小于 1s（已通过 NTP 校准）' },
-    ],
-  },
-  E005: {
-    title: '会话黑名单命中（进程内 HashSet）',
-    right: '当前 3 条',
-    rows: [
-      { k: '会话 ID', v: '6f3a9c2e…' },
-      { k: '首次握手', v: '10:33:12 · 已建立通道' },
-      { k: '写入时机', v: '质询应答校验通过后立即写入' },
-    ],
-  },
-  E006: {
-    title: '等待应答摘要（S_WAIT_RESPONSE）',
-    right: '已等待 10.0s',
-    rows: [
-      { k: 'TCP 连接', v: '已建立（38ms），端口 51820 可达', tone: 'success', right: '正常' },
-      { k: 'challenge', v: 'a7f2c94de1b8035（16B · 一次性）' },
-      { k: '应答摘要', v: '未收到任何字节', tone: 'danger', right: '未自动重发' },
-    ],
-  },
-  E007: {
-    title: 'Payload 字段解析（大端）',
-    right: '协议 v1 · flags 0x00',
-    rows: [
-      { k: 'version / flags', v: '0x01 / 0x00', tone: 'success', right: '合法' },
-      { k: 'session_id', v: '16 字节', tone: 'success', right: '合法' },
-      { k: 'ts', v: 'uint32', tone: 'success', right: '合法' },
-      { k: 'candidate_count', v: '6（上限 4）', tone: 'danger', right: '非法 · 拒绝' },
-    ],
-  },
-  E008: {
-    title: 'Blake3(session_id ∥ challenge) 比对',
-    right: '应答耗时 812ms',
-    rows: [
-      { k: '本机期望', v: '3e9b71c4d8f2a605…' },
-      { k: '对端回传', v: 'b81f0a27c4de9351…', tone: 'danger', right: '不匹配' },
-      { k: '逐字节比对', v: '32 字节中有 19 字节不同' },
-      { k: '判定', v: '应答与本次 challenge 无关，疑似重放或中间改写', tone: 'danger' },
-    ],
-  },
-  E009: {
-    title: '候选地址探测（按优先级依次尝试）',
-    right: '合计 6.4s',
-    rows: [
-      { k: 'Pub6', v: '[2408:8207:…:9c1d]:51820 · 连接超时 3s', tone: 'warning', right: '超时' },
-      { k: 'Pub4', v: '121.36.80.24:51820 · 连接被拒绝', tone: 'warning', right: 'RST' },
-      { k: 'Lan4', v: '未打包 · 跳过（不同子网）', tone: 'muted', right: '跳过' },
-    ],
-  },
-}
+/**
+ * 错误态诊断分区：原型的假诊断数值（假 CRC / 假 IP / 假 session）已移除。
+ * 诊断区只在后端提供结构化诊断数据时才会显示，当前真机无该来源，故为空。
+ */
+export const DIAGNOSIS: Partial<Record<ErrorCode, Diagnosis>> = {}

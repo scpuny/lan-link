@@ -20,7 +20,7 @@ const menus = computed<MenuGroup[]>(() => [
       { label: '选择文件夹…', key: 'open-folder' },
       { label: '从剪贴板发送', key: 'paste-send', hint: 'Ctrl+V' },
       { sep: true, label: '' },
-      { label: '传输记录', key: 'view-history', hint: '18' },
+      { label: '传输记录', key: 'view-history' },
       { label: '打开下载目录', key: 'open-dl' },
       { sep: true, label: '' },
       { label: '退出', key: 'quit', hint: 'Alt+F4' },
@@ -30,7 +30,7 @@ const menus = computed<MenuGroup[]>(() => [
     label: '设备',
     items: [
       { label: '扫描局域网设备', key: 'scan', hint: 'F5' },
-      { label: '附近设备', key: 'nearby', hint: '3 台' },
+      { label: '附近设备', key: 'nearby', hint: state.nearby.length ? `${state.nearby.length} 台` : undefined },
       { sep: true, label: '' },
       { label: '生成外网序列号…', key: 'gen', hint: 'Ctrl+G' },
       { label: '生成局域网短码…', key: 'gen-lan', hint: 'Ctrl+L' },

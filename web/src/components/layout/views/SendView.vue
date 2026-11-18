@@ -86,11 +86,7 @@ function extOf(f: SendFile): string {
   return f.ext || (f.name.includes('.') ? f.name.split('.').pop()!.toUpperCase() : 'TXT')
 }
 
-/**
- * 展示用的文件表数据：
- *  - 用户已选文件（sendFiles 非空）→ 真实队列；
- *  - 否则回退到定版原型数据，保证默认打开界面逐像素不变。
- */
+/** 展示用的文件表数据：只来自用户真实选择的文件，无文件时为空表 */
 interface DisplayFile { key: string; name: string; size: string; time: string; ext: string; tone: string; pathOrName: string }
 const displayFiles = computed<DisplayFile[]>(() => {
   if (state.sendFiles.length) {
@@ -104,27 +100,20 @@ const displayFiles = computed<DisplayFile[]>(() => {
       pathOrName: f.path || f.name,
     }))
   }
-  return L.files.map((f, i) => ({ key: `proto-${i}`, ...f, pathOrName: `proto-${i}` }))
+  return []
 })
 
-/** 汇总行：真实队列优先，否则用原型汇总文案 */
+/** 汇总行：无文件时显示空态文案 */
 const fileFootText = computed(() =>
   state.sendFiles.length
     ? `已选 ${sendSummary.value.count} 个文件，共 ${fmtSize(sendSummary.value.bytes)}`
     : L.fileFoot,
 )
 
-/** 就绪态文件表（原型 main-ready.png，无 LAN 变体） */
-const idleFiles = [
-  { name: 'LanLink-设计规范-v1.2.pdf', size: '4.2 MB', time: '11-14 10:22', ext: 'PDF', tone: 'pdf' },
-  { name: '会议录屏_1114_外网序列号评审.mp4', size: '862 MB', time: '11-14 09:58', ext: 'MP4', tone: 'video' },
-  { name: 'lanlink-protocol-src.zip', size: '128 MB', time: '11-13 21:40', ext: 'ZIP', tone: 'zip' },
-]
+/** 就绪态文件表：无真实文件时为空 */
+const idleFiles: { name: string; size: string; time: string; ext: string; tone: string }[] = []
 
-/**
- * 设备表展示数据：真机一旦发现设备用真实 nearby；否则回退定版原型数据，
- * 保证默认打开界面与原型逐像素一致。
- */
+/** 设备表展示数据：只来自真实 nearby，未发现设备时为空 */
 interface DisplayDevice {
   id: string; name: string; platform: string; addr: string
   latency: string; action: string; primary: boolean; warn: boolean; icon: string
@@ -143,11 +132,11 @@ const displayDevices = computed<DisplayDevice[]>(() => {
       icon: 'laptop',
     }))
   }
-  return L.target.devices.map((d) => ({ ...d, warn: !!d.warn }))
+  return []
 })
 const deviceHint = computed(() =>
   state.nearby.length
-    ? `同网段 · mDNS 自动发现 ${state.nearby.length} 台`
+    ? `同网段 · UDP 42211 发现 ${state.nearby.length} 台`
     : L.target.hint,
 )
 
@@ -168,21 +157,20 @@ const activeTasks = computed(() => state.tasks.filter((t) => t.status === 'trans
 const queuedTasks = computed(() => state.tasks.filter((t) => t.status === 'queued'))
 const doneCount = computed(() => state.tasks.filter((t) => t.status === 'done').length)
 
-/** 真实会话展示值：优先 state.session（后端 connect/connect_lan_code 返回），预览态回退原型 */
-const peerName = computed(() => state.session?.peerName || '李工的 MacBook Pro')
-const peerAddr = computed(() => state.session?.addr || '[2408:8207:…:9c1d]:51820')
-const peerRtt = computed(() => state.session?.rtt || 38)
-/** 短码连接时 sessionShort 由后端返回（6 位）；外网序列号是长码，取前 8 位展示 */
+/** 会话展示值：只来自后端 connect / connect_lan_code 返回，无会话显示占位符 */
+const peerName = computed(() => state.session?.peerName || '—')
+const peerAddr = computed(() => state.session?.addr || '—')
+const peerRtt = computed(() => state.session?.rtt ?? 0)
+/** sessionShort 由后端返回；无会话显示占位符 */
 const sessionLabel = computed(() => {
   const s = (state.session as any)?.sessionShort
-  if (s) return String(s)
-  return '6f3a9c2e'
+  return s ? String(s) : '—'
 })
 /** 累计传输：按各任务 size × progress 估算（真实进度事件写入 size/progress） */
 const totalTransferred = computed(() => {
   let bytes = 0
   for (const t of state.tasks as any[]) bytes += Number(t.size || 0) * (Number(t.progress || 0) / 100)
-  return bytes > 0 ? fmtSize(Math.round(bytes)) : '0 MB'
+  return bytes > 0 ? fmtSize(Math.round(bytes)) : '0 B'
 })
 /** 期望 seq：取所有任务里最大的 seq（真实进度事件写入） */
 const maxSeq = computed(() => {
@@ -191,11 +179,11 @@ const maxSeq = computed(() => {
   return seq || '—'
 })
 
-/** 近 60s 速率曲线：真实采样优先，否则用原型静态序列 */
-const PROTO_RATE = [17, 18, 19, 18, 21, 22, 21, 24, 26, 25, 28, 27, 30, 32, 31, 34, 33, 36, 38, 37, 40, 39, 41, 42, 40, 43, 44, 42, 45, 46]
-const rateSeries = computed(() => (state.rateHistory.length >= 3 ? state.rateHistory.slice(-30) : PROTO_RATE))
+/** 近 60s 速率曲线：只来自真实采样，未采样时为空 */
+const rateSeries = computed(() => (state.rateHistory.length >= 3 ? state.rateHistory.slice(-30) : []))
 const rateLine = computed(() => {
   const s = rateSeries.value
+  if (!s.length) return ''
   return s
     .map((v, i) => {
       const x = s.length > 1 ? (i / (s.length - 1)) * 600 : 0
@@ -204,7 +192,7 @@ const rateLine = computed(() => {
     })
     .join(' ')
 })
-const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} L600,90 Z`)
+const rateArea = computed(() => rateLine.value ? `M0,90 L${rateLine.value.split(' ').join(' L')} L600,90 Z` : '')
 </script>
 
 <template>
@@ -296,7 +284,7 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
               <span class="mc-title">局域网短码</span>
               <span class="ll-tag ll-tag--plain">同网段</span>
             </div>
-            <p class="mc-desc ll-text-secondary">6 位短码 + mDNS 发现，断网可用，程序运行期内有效</p>
+            <p class="mc-desc ll-text-secondary">6 位短码 + UDP 广播发现，断网可用，程序运行期内有效</p>
             <button class="ll-btn ll-btn--default ll-btn--block" @click="openDialog('generateLan')">
               <Icon name="lan" :size="13" /> 生成局域网短码
             </button>

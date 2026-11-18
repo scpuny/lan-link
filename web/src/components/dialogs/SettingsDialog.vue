@@ -118,7 +118,7 @@ async function copyDiagnostics() {
     'LanLink 诊断信息',
     `版本: v0.9.4 (20261114) · 协议 v1`,
     `系统: ${s?.osUser || '未知'}`,
-    `网络能力: IPv6=${s?.netCapabilities.ipv6Global ? '是' : '否'} STUN=${s?.netCapabilities.stun ? '是' : '否'} mDNS=${s?.netCapabilities.mdns ? '是' : '否'}`,
+    `网络能力: IPv6=${s?.netCapabilities.ipv6Global ? '是' : '否'} STUN=${s?.netCapabilities.stun ? '是' : '否'} 广播=${s?.netCapabilities.mdns ? '是' : '否'}`,
     `黑名单: ${state.blacklistCount} 条 · 日志红线: session前8位 + ts + error_code`,
   ].join('\n')
   try {

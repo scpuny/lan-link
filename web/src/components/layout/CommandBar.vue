@@ -14,13 +14,13 @@ const view = computed(() => state.mainView)
 const transferring = computed(() => state.centerState === 'transferring')
 const withLan = computed(() => state.centerState === 'idle_with_lan')
 /** 顶部连接标签：真实会话的对端名/延迟，地址类型按 IP 判定 */
-const connPeer = computed(() => state.session?.peerName || '李工的 MacBook Pro')
-const connRtt = computed(() => state.session?.rtt || 38)
+const connPeer = computed(() => state.session?.peerName || '未连接')
+const connRtt = computed(() => state.session?.rtt ?? 0)
 const connKind = computed(() => {
   const a = state.session?.addr || ''
   if (a.includes(':')) return 'IPv6 直连'
   if (a) return '局域网直连'
-  return 'IPv6 直连'
+  return '未建立'
 })
 
 /** send 视图第二按钮：定版就绪态为「打开保存目录」，传输中为「全部暂停」 */
@@ -30,7 +30,7 @@ const secondAction = computed(() => {
 })
 
 const onlineText = computed(() => {
-  if (view.value === 'receive') return 'mDNS 广播中 · 端口 42210'
+  if (view.value === 'receive') return '局域网广播中 · 发现 42211 / 传输 42210'
   if (view.value === 'history') return '本机在线 · 监听 42210'
   if (transferring.value) return '本机在线 · 监听 42210'
   if (withLan.value) return L.onlineText

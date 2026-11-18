@@ -46,7 +46,7 @@ const steps = [
   { label: '校验通过', state: 'idle' },
 ] as const
 
-const serial = 'K7G2S9-5MNP8R-2HJK7T-9QG3S5-4WXY6A-8BCD3F-6NPQ2R-9STV4K-3HJL7M-5XCV8B-2DFG4N-7QWE9P-1AZX3C-HN8P3J'
+const serial = ''
 </script>
 
 <template>
@@ -56,7 +56,7 @@ const serial = 'K7G2S9-5MNP8R-2HJK7T-9QG3S5-4WXY6A-8BCD3F-6NPQ2R-9STV4K-3HJL7M-5
       <Icon name="info" :size="14" class="ll-banner__icon" />
       <div class="ll-col">
         <b>对方已收到序列号并发起连接</b>
-        <span class="ll-text-tertiary">来自 [2408:8207:…:9c1d]:51820 · 已接收 16 字节质询</span>
+        <span class="ll-text-tertiary">等待对端地址与质询状态由握手事件填入</span>
       </div>
       <span class="ll-text-tertiary">协议 v1</span>
     </div>

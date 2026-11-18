@@ -82,13 +82,13 @@ const badge = computed(() => phase.value === 'done' ? { text: '✓ 广播中', v
     <template v-if="phase !== 'done'">
       <div class="ll-banner gl-intro">
         <Icon name="info" :size="14" class="ll-banner__icon" />
-        <span>生成 6 位短码，通过 mDNS 广播 + 子网探测发现对端。<b>不携带任何地址</b>，断外网也能直连，仅双方同一局域网时可用。</span>
+        <span>生成 6 位短码，通过 UDP 42211 广播发现对端。<b>不携带任何地址</b>，断外网也能直连，仅双方同一局域网时可用。</span>
       </div>
 
       <div class="ll-card gl-info-card">
         <div class="gl-info-row">
           <span class="ll-section-title"><Icon name="wifi" :size="13" /> 发现方式</span>
-          <span class="ll-text-tertiary">mDNS 广播 · 端口 42210</span>
+          <span class="ll-text-tertiary">UDP 42211 广播 · 传输 42210</span>
         </div>
         <div class="gl-info-row">
           <span class="ll-text-secondary">有效期</span>
@@ -133,7 +133,7 @@ const badge = computed(() => phase.value === 'done' ? { text: '✓ 广播中', v
       </div>
 
       <div class="gl-status-grid">
-        <div class="gl-status-item"><span class="ll-text-tertiary">广播状态</span><span class="gl-online"><span class="ll-dot ll-dot--success" /> mDNS 广播中</span></div>
+        <div class="gl-status-item"><span class="ll-text-tertiary">广播状态</span><span class="gl-online"><span class="ll-dot ll-dot--success" /> UDP 42211 广播中</span></div>
         <div class="gl-status-item"><span class="ll-text-tertiary">已等待</span><span class="ll-mono">{{ elapsedText }}</span></div>
         <div class="gl-status-item"><span class="ll-text-tertiary">局域网地址</span><span class="ll-mono">{{ result?.candidates.map(c => c.value).join(' · ') || '—' }}</span></div>
         <div class="gl-status-item"><span class="ll-text-tertiary">有效期</span><span>程序运行期 · 无倒计时</span></div>

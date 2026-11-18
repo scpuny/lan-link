@@ -55,14 +55,8 @@ const legacySecurity = [
   '高敏感文件建议勾选口令保护再生成',
 ]
 
-const recent = computed(() =>
-  withLan.value
-    ? L.recent
-    : [
-        { name: '李工的 MacBook Pro', desc: '11-14 10:24 · IPv6 直连 · 已结束', tone: 'ok' },
-        { name: 'OFFICE-PC-07', desc: '11-13 17:02 · 无法连接候选地址 E009', tone: 'warn' },
-      ]
-)
+/** 最近连接：只来自真实记录，未产生连接时为空 */
+const recent = computed(() => L.recent)
 
 function togglePref(key: 'askBeforeReceive' | 'autoRename') {
   state[key] = !state[key]

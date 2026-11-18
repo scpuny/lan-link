@@ -13,13 +13,13 @@ type Phase = 'form' | 'generating' | 'done'
 const phase = ref<Phase>('form')
 const result = ref<GenerateResult | null>(null)
 
-/** 原型 gen-full.png：2 / 4 条候选地址 */
+/** 候选地址选项：实际地址由后端 get_self_info / generate_serial 采集，此处只有类型说明 */
 const cands = reactive<
   { kind: CandidateAddr['kind']; label: string; desc: string; checked: boolean; optional?: boolean }[]
 >([
   { kind: 'Pub6', label: 'Pub6', desc: '全球单播 IPv6 · 跨网首选', checked: true },
-  { kind: 'Pub4', label: 'Pub4', desc: 'STUN 观测端点 121.36.80.24:51820', checked: true },
-  { kind: 'Lan4', label: '', desc: '包含内网地址（192.168.1.24 · ULA）', checked: false, optional: true },
+  { kind: 'Pub4', label: 'Pub4', desc: 'STUN 观测端点（由本机网络采集）', checked: true },
+  { kind: 'Lan4', label: '', desc: '包含内网地址（由网卡采集）', checked: false, optional: true },
 ])
 const selectedCount = computed(() => cands.filter((c) => c.checked).length)
 
@@ -117,7 +117,7 @@ const badge = computed(() =>
     @close="close"
   >
     <template #header-extra>
-      <span v-if="phase !== 'done'" class="gd-device"><Icon name="monitor" :size="12" /> {{ state.self?.deviceName || 'DESKTOP-LL-01' }}</span>
+      <span v-if="phase !== 'done'" class="gd-device"><Icon name="monitor" :size="12" /> {{ state.self?.deviceName || '—' }}</span>
     </template>
 
     <!-- ===== 表单态 ===== -->

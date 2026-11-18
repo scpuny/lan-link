@@ -154,12 +154,12 @@ export interface TransferTask {
   progress: number
   speed: number // bytes/s
   status: 'transferring' | 'queued' | 'done'
-  /** 原型任务卡第二行：862 MB · 分片 4 MB · 发送中 */
+  /** 任务卡第二行：大小 · 分片 · 状态（由真实进度事件生成） */
   detail?: string
-  /** 原型任务卡第四行：534.4 MB / 862 MB · 剩余约 9.6s */
+  /** 任务卡第四行：已传输 / 总量 · 剩余时间（由真实进度事件生成） */
   transferred?: string
   /** 接收端已确认 seq */
   seq?: number
-  /** 直接展示的速率文案（34.2 MB/s） */
+  /** 直接展示的速率文案（由真实 bytes/s 换算） */
   speedText?: string
 }

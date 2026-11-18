@@ -14,13 +14,20 @@ const { state, openDialog, beginTransferSession } = useUi()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const tab = ref<'serial' | 'lan'>('serial')
-// 原型 connect-ready.png 预置示例序列号，便于一眼看到格式与清洗效果
-const serial = ref('K7G2S9-5MNP8R-2HJK7T-9QG3S5')
+// 序列号从空开始，只由用户粘贴/输入填入
+const serial = ref('')
 const usePassword = ref(false)
 const password = ref('')
 const showPwd = ref(false)
 const lanCode = ref('')
-/** D4：设备表选中的目标地址（优先直连），点「选择」后置入 */
+/** D4：输入即转大写并剔除非法字符（A-Z / 2-9），用户无需手动切换大小写 */
+function onLanCodeInput(e: Event) {
+  const el = e.target as HTMLInputElement
+  const cleaned = el.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 6)
+  lanCode.value = cleaned
+  if (el.value !== cleaned) el.value = cleaned
+}
+/** D4：设备表选中的目标地址（仅作优先拨号目标，不替代短码），点「选择」后置入 */
 const selectedLanAddr = ref('')
 /** D4：重新搜索中的瞬时反馈 */
 const scanning = ref(false)
@@ -330,9 +337,9 @@ function close() {
             <span class="ll-section-title"><Icon name="link" :size="13" class="ci-ico" /> 通道信息</span>
             <span class="ll-text-tertiary ll-mono">协议 v1 · flags={{ state.session?.flags || '0x00' }}</span>
           </div>
-          <div class="ll-kv"><span class="ll-kv__k">对端设备</span><span class="ll-kv__v">{{ state.session?.peerName || '李工的 MacBook Pro' }}</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">连接地址</span><span class="ll-kv__v ll-mono">{{ state.session?.addr || '[2408:8207:…:9c1d]:51820' }} <span class="ll-tag ll-tag--brand">{{ (state.session?.addr || '').includes(':') ? 'IPv6 直连' : '局域网直连' }}</span></span></div>
-          <div class="ll-kv"><span class="ll-kv__k">往返延迟</span><span class="ll-kv__v">{{ state.session?.rtt || 38 }} ms</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">对端设备</span><span class="ll-kv__v">{{ state.session?.peerName || '—' }}</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">连接地址</span><span class="ll-kv__v ll-mono">{{ state.session?.addr || '—' }} <span class="ll-tag ll-tag--brand">{{ (state.session?.addr || '').includes(':') ? 'IPv6 直连' : '局域网直连' }}</span></span></div>
+          <div class="ll-kv"><span class="ll-kv__k">往返延迟</span><span class="ll-kv__v">{{ state.session?.rtt ?? 0 }} ms</span></div>
           <div class="ll-kv"><span class="ll-kv__k">通道加密</span><span class="ll-kv__v">{{ state.session?.encrypted ? 'AES-GCM-256（口令保护）' : '关闭（明文二进制 + CRC32 完整性）' }}</span></div>
         </div>
 
@@ -394,15 +401,15 @@ function close() {
           </div>
           <div class="ll-kv"><span class="ll-kv__k">session 前 8 位</span><span class="ll-kv__v ll-mono">{{ sessionShort.slice(0, 8) }}</span></div>
           <div class="ll-kv"><span class="ll-kv__k">16 字节 challenge</span><span class="ll-kv__v ll-mono">{{ challenge.slice(0, 16) }}</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">目标地址</span><span class="ll-kv__v ll-mono">2408:8207:…:9c1d（IPv6 优先）</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">目标地址</span><span class="ll-kv__v ll-mono">{{ state.session?.addr || '等待对端应答' }}</span></div>
           <p class="ll-text-tertiary cd-challenge-note">已向对端发起连接并下发 challenge，等待 Blake3 摘要应答；成功后写入黑名单。</p>
         </div>
 
         <!-- 校验中解析结果 -->
         <div v-if="phase === 'validating'" class="ll-card cd-parsed">
-          <div class="ll-row ll-between"><span class="ll-section-title">解析序列号</span><span class="ll-text-tertiary ll-mono">84 字符 · 14 组</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">Pub6</span><span class="ll-kv__v ll-mono">2408:8207:3d4f:2a1b:9c1d</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">Pub4</span><span class="ll-kv__v ll-mono">121.36.80.24:51820</span></div>
+          <div class="ll-row ll-between"><span class="ll-section-title">解析序列号</span><span class="ll-text-tertiary ll-mono">正在解码 Base32 · CRC32 校验中</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">输入字符</span><span class="ll-kv__v ll-mono">{{ serial.replace(/[^A-Za-z0-9]/g, '').length }} 位</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">候选地址</span><span class="ll-kv__v ll-mono">解析完成后显示</span></div>
         </div>
 
         <div class="cd-field-head">
@@ -534,10 +541,20 @@ function close() {
     <template v-else>
       <div class="cd-field-head">
         <span>邀请短码（6 位）</span>
-        <span class="ll-text-tertiary">留空则直接从下方设备表选择</span>
+        <span class="ll-text-tertiary">必填 · 输入自动转大写（A-Z / 2-9）</span>
       </div>
-      <input v-model="lanCode" class="ll-input ll-input--mono cd-lan-input" maxlength="6" placeholder="K7G2S9" @keyup.enter="runLanConnect" />
-      <div class="cd-meta"><span class="ll-text-tertiary"><span class="ll-dot ll-dot--success" /> mDNS 广播中 · 端口 42210</span></div>
+      <input
+        :value="lanCode"
+        class="ll-input ll-input--mono cd-lan-input"
+        maxlength="6"
+        autocomplete="off"
+        autocapitalize="characters"
+        spellcheck="false"
+        placeholder="XXXXXX"
+        @input="onLanCodeInput"
+        @keyup.enter="runLanConnect"
+      />
+      <div class="cd-meta"><span class="ll-text-tertiary"><span class="ll-dot ll-dot--success" /> 局域网广播中 · 发现 42211 / 传输 42210</span></div>
 
       <div v-if="phase === 'validating' || phase === 'handshake'" class="ll-banner cd-lan-state cd-lan-state--info">
         <span class="ll-spinner" />
@@ -553,7 +570,7 @@ function close() {
       </div>
 
       <div class="ll-card cd-lan-card">
-        <div class="cd-lan-head"><span class="ll-section-title">附近设备（已发现 {{ state.nearby.length || 3 }} 台）</span><span class="ll-text-tertiary">地址 · 延迟</span></div>
+        <div class="cd-lan-head"><span class="ll-section-title">附近设备（已发现 {{ state.nearby.length || 3 }} 台）</span><span class="ll-text-tertiary">可选 · 仅指定优先拨号地址</span></div>
         <div
           v-for="d in state.nearby"
           :key="d.id"
@@ -572,8 +589,8 @@ function close() {
       </div>
 
       <div class="cd-lan-note">
-        <p><Icon name="info" :size="12" /> 6 位短码不携带地址，通过 mDNS 广播 + 子网探测发现对端；跨网段 / 跨 VLAN 请切换外网序列号连接</p>
-        <p><Icon name="info" :size="12" /> 两种凭证不共用输入缓冲，切换页签不会保留上一页内容</p>
+        <p><Icon name="info" :size="12" /> 短码必须输入：它是对方给你的接收授权，设备表不能代替；下方设备只决定优先拨号地址</p>
+        <p><Icon name="info" :size="12" /> 6 位短码不携带地址，通过 UDP 42211 广播发现持有方；跨网段 / 跨 VLAN 请改用外网序列号</p>
       </div>
 
       <div class="cd-actions">
@@ -583,7 +600,7 @@ function close() {
       </div>
 
       <div class="cd-lan-status">
-        <span><span class="ll-dot" /> 就绪，输入 6 位短码或直接选择附近设备</span>
+        <span><span class="ll-dot" /> 就绪，输入对方提供的 6 位短码后连接</span>
         <span class="ll-text-tertiary"><Icon name="clock" :size="11" /> 程序运行期有效</span>
       </div>
     </template>

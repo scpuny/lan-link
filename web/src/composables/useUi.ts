@@ -6,9 +6,7 @@
 import { reactive, ref, computed } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { invoke, bridgeMode, hasTauri } from '../bridge'
-import { HISTORY_TOTAL } from '../data/views'
 import { useRecords } from './useRecords'
-import { SEND_LOCKED } from '../data/send'
 import type {
   SelfInfo,
   NearbyDevice,
@@ -87,31 +85,9 @@ const state = reactive<UiState>({
   lanCode: null,
   nearby: [],
   session: null,
-  // 原型 main-transferring.png 的任务数据仅用于浏览器预览态（mock）。
-  // 真机态必须为空：新选择的文件由 queueSendFiles 预建任务，进度由后端事件更新，
-  // 否则界面永远显示这 3 条 mock，真实文件反而“不进队列”。
-  tasks: hasTauri() ? [] : [
-    {
-      id: 't1', name: '会议录屏_1114_外网序列号评审.mp4', size: 862_000_000,
-      progress: 62, speed: 34_200_000, status: 'transferring',
-      detail: '862 MB · 分片 4 MB · 发送中',
-      transferred: '534.4 MB / 862 MB · 剩余约 9.6s',
-      seq: 1342, speedText: '34.2 MB/s',
-    },
-    {
-      id: 't2', name: 'LanLink-设计规范-v1.2.pdf', size: 4_200_000,
-      progress: 21, speed: 7_400_000, status: 'transferring',
-      detail: '4.2 MB · 分片 4 MB · 发送中',
-      transferred: '0.9 MB / 4.2 MB · 剩余约 0.5s',
-      seq: 127, speedText: '7.4 MB/s',
-    },
-    {
-      id: 't3', name: 'lanlink-protocol-src.zip', size: 128_000_000,
-      progress: 0, speed: 0, status: 'queued',
-    },
-  ],
+  // 任务/速率/待发队列一律从空开始，真机由选择文件与后端进度事件填充；浏览器预览保持空态
+  tasks: [],
   rateHistory: [],
-  // 定版默认待发送 2 项（与原型一致）；用户选择文件后由真实队列替换
   sendFiles: [],
   saveDir: '',
   blacklistCount: 0,
@@ -131,9 +107,9 @@ const state = reactive<UiState>({
   demoError: null,
 })
 
-/** 左轨角标：接收文件 1（进行中），传输记录 18（总条数） */
-const receiveBadge = 1
-const historyBadge = HISTORY_TOTAL
+/** 左轨角标：接收中任务数 / 真实记录条数（均为响应式） */
+const receiveBadge = computed(() => state.tasks.filter((t) => t.status === 'transferring' || t.status === 'queued').length)
+const historyBadge = computed(() => useRecords().total.value)
 
 /** 轻量提示条：用于「打开保存目录」等一次性动作的反馈 */
 const toast = ref<string | null>(null)
@@ -441,26 +417,24 @@ async function rescanLan() {
   }
 }
 
-/** 派生：状态栏主文案，按主视图分派 */
+/** 派生：状态栏主文案，全部来自真实状态，无原型常数回退 */
 const statusText = computed(() => {
   if (state.mainView === 'receive') {
-    return state.receivePaused
-      ? '接收已暂停 · 1 个进行 · 1 个排队'
-      : '接收中 · 1 个进行 · 1 个排队 · 34.2 MB/s'
+    if (state.receivePaused) return '接收已暂停'
+    const active = state.tasks.filter((t) => t.status === 'transferring').length
+    const queued = state.tasks.filter((t) => t.status === 'queued').length
+    return active || queued ? `接收中 · ${active} 个进行 · ${queued} 个排队` : '等待接收任务'
   }
   if (state.mainView === 'history') {
-    return `传输记录 · 共 ${HISTORY_TOTAL} 条 · 失败 2`
+    return `传输记录 · 共 ${useRecords().total.value} 条`
   }
   if (state.centerState === 'transferring') {
     const n = state.tasks.filter((t) => t.status === 'transferring').length
-    return `传输中 · ${n} 个任务 · 41.6 MB/s`
+    const speed = state.tasks.reduce((a, t) => a + Number(t.speed || 0), 0)
+    return `传输中 · ${n} 个任务${speed > 0 ? ` · ${(speed / 1024 / 1024).toFixed(1)} MB/s` : ''}`
   }
   if (state.centerState === 'idle_with_lan') {
-    // 用户已选文件时反映真实数量；否则保持定版原型文案
-    if (state.sendFiles.length) {
-      return `就绪 · 待发送 ${state.sendFiles.length} 个文件 · 已发现 ${state.nearby.length} 台设备`
-    }
-    return SEND_LOCKED.statusText
+    return `就绪 · 待发送 ${state.sendFiles.length} 个文件 · 已发现 ${state.nearby.length} 台设备`
   }
   return '就绪 · 无活动会话'
 })

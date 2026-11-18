@@ -30,16 +30,13 @@ interface Cap { label: string; value: string; tone: 'ok' | 'warn' | 'danger' | '
 const locked = computed(() => state.mainView === 'send' && state.centerState === 'idle_with_lan')
 
 /**
- * 本机信息卡：三视图共用的同一份真实数据。
- * - 真机（Tauri）：state.self 来自 get_self_info 真采集，字段缺失显示「—」；
- * - 浏览器预览：init() 仍会 mock 出 state.self（原型值），故同样走真实字段，
- *   仅在 state.self 尚未就绪时回退原型常量，保证首帧与设计稿逐像素一致。
- * 不再按 mainView/centerState 分叉，切视图不再出现 IP 忽真忽假。
+ * 本机信息卡：三视图共用同一份真实数据（state.self 来自 get_self_info）。
+ * 未就绪时一律显示「—」，不回退任何原型常量。
  */
 const selfCard = computed(() => {
   const s = state.self
   return {
-    name: s?.deviceName || 'DESKTOP-LL-01',
+    name: s?.deviceName || '—',
     os: s?.osUser || L.selfOs,
     lan4: s?.lan4 || L.selfLan4,
     pub6: s?.pub6 || L.selfPub6,
@@ -80,14 +77,14 @@ const caps = computed<Cap[]>(() => {
   }
   if (state.centerState === 'idle_with_lan') {
     return [
-      { label: 'mDNS 广播', value: '运行中', tone: 'ok', icon: 'checkCircle' },
+      { label: '局域网广播', value: '运行中', tone: 'ok', icon: 'checkCircle' },
       { label: '子网探测', value: '42210', tone: 'muted', icon: 'network' },
       { label: '跨网序列号', value: '可用', tone: 'ok', icon: 'checkCircle' },
     ]
   }
   const s = state.self?.netCapabilities
   return [
-    { label: 'mDNS 广播', value: s?.mdns ? '运行中' : '未启动', tone: s?.mdns ? 'ok' : 'warn', icon: 'checkCircle' },
+    { label: '局域网广播', value: s?.mdns ? '运行中' : '未启动', tone: s?.mdns ? 'ok' : 'warn', icon: 'checkCircle' },
     { label: 'STUN 端点', value: s?.stun ? '已获取' : '未获取', tone: s?.stun ? 'ok' : 'warn', icon: 'checkCircle' },
     { label: 'IPv6 全球单播', value: s?.ipv6Global ? '可用' : '不可用', tone: s?.ipv6Global ? 'ok' : 'warn', icon: 'checkCircle' },
     { label: 'IPv4 直连性', value: s?.ipv4Direct ? '可用' : '疑似 CGNAT', tone: s?.ipv4Direct ? 'ok' : 'warn', icon: 'alertTriangle' },
@@ -96,7 +93,7 @@ const caps = computed<Cap[]>(() => {
 
 /** 接收视图底部卡：可接收状态 */
 const receiveCaps: Cap[] = [
-  { label: 'mDNS 可发现', value: '开启', tone: 'ok', icon: 'checkCircle' },
+  { label: '局域网可发现', value: '开启', tone: 'ok', icon: 'checkCircle' },
   { label: '防火墙放行', value: '已添加', tone: 'ok', icon: 'checkCircle' },
   { label: '剩余空间', value: '218 GB', tone: 'muted', icon: 'hardDrive' },
 ]
