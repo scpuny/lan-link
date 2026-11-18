@@ -12,11 +12,17 @@ import { type HistoryRow } from '../data/views'
 const KEY = 'll-history-v1'
 const RETAIN_DAYS = 30
 
-/** 自适应单位：5 KB 不能被按 MB 取整成 0 MB */
-function fmtSize(bytes: number): string {
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`
-  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`
+/**
+ * 按数据大小自适应 K / M / G，最小单位到 KB（不出现 0 MB / < 1 MB 这种模糊表述）。
+ * 1024 进制；去掉末尾多余的 0：5096B→5 KB、1.5MB→1.5 MB、2GB→2 GB。
+ */
+function trim(n: number, digits: number): string {
+  return n.toFixed(digits).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')
+}
+export function fmtSize(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${trim(bytes / 1024 ** 3, 2)} GB`
+  if (bytes >= 1024 ** 2) return `${trim(bytes / 1024 ** 2, 1)} MB`
+  if (bytes >= 1024) return `${trim(bytes / 1024, 1)} KB`
   return `${bytes} B`
 }
 
@@ -30,13 +36,11 @@ function load(): HistoryRow[] {
     const kept = rows.filter((r) => typeof r.ts === 'number' && r.ts >= cutoff)
     let changed = kept.length !== rows.length
     for (const r of kept) {
+      // 有原始字节就一律按统一规则重算（K/M/G 自适应，最小到 KB）。
+      // 不再把 0 MB 固化成 '< 1 MB'——那会让记录再也无法被正确格式化。
       if (typeof r.bytes === 'number' && r.bytes > 0) {
         const s = fmtSize(r.bytes)
         if (r.size !== s) { r.size = s; changed = true }
-      } else if (r.ts && r.size === '0 MB') {
-        // 旧版按 MB 取整把小文件记成 0 MB，已无原始字节数可反推，退为保守表述
-        r.size = '< 1 MB'
-        changed = true
       }
     }
     if (changed) localStorage.setItem(KEY, JSON.stringify(kept))
