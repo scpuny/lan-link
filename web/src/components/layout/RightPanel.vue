@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import Icon from '../common/Icon.vue'
 import { useUi } from '../../composables/useUi'
 import {
@@ -12,6 +12,42 @@ const { state, openDialog } = useUi()
 
 const transferring = computed(() => state.centerState === 'transferring')
 const withLan = computed(() => state.centerState === 'idle_with_lan')
+
+/** 真实会话派生值（后端 connect / connect_lan_code 返回 + 进度事件写入） */
+const fmtBytes = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${(n / 1024).toFixed(0)} KB`)
+const totalBytes = computed(() =>
+  (state.tasks as any[]).reduce((a, t) => a + Number(t.size || 0) * (Number(t.progress || 0) / 100), 0),
+)
+const totalText = computed(() => (totalBytes.value > 0 ? fmtBytes(Math.round(totalBytes.value)) : '—'))
+const maxSeq = computed(() => {
+  const s = (state.tasks as any[]).reduce((a, t) => Math.max(a, Number(t.seq || 0)), 0)
+  return s || '—'
+})
+const channelCrypt = computed(() =>
+  state.session?.encrypted ? 'AES-GCM-256（口令保护）' : '关闭（明文二进制 + CRC32）',
+)
+
+/** 连接时长：从进入 transferring 起算的真实秒数 */
+const connStart = ref<number>(0)
+const tick = ref(0)
+let timer: ReturnType<typeof setInterval> | undefined
+watch(transferring, (on) => {
+  if (on) {
+    connStart.value = Date.now()
+    tick.value = 0
+    timer = setInterval(() => { tick.value++ }, 1000)
+  } else if (timer) {
+    clearInterval(timer); timer = undefined
+  }
+})
+onUnmounted(() => { if (timer) clearInterval(timer) })
+const elapsedText = computed(() => {
+  const s = Math.max(0, tick.value)
+  const h = String(Math.floor(s / 3600)).padStart(2, '0')
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0')
+  const sec = String(s % 60).padStart(2, '0')
+  return `${h}:${m}:${sec}`
+})
 
 const legacySecurity = [
   '序列号仅存于内存，关闭弹窗即销毁',
@@ -44,9 +80,9 @@ function togglePref(key: 'askBeforeReceive' | 'autoRename') {
         </div>
         <div class="ll-kv"><span class="ll-kv__k">连接状态</span><span class="ll-kv__v">{{ transferring ? '已建立' : '未连接' }}</span></div>
         <template v-if="transferring">
-          <div class="ll-kv"><span class="ll-kv__k">连接时长</span><span class="ll-kv__v">00:01:42</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">累计传输</span><span class="ll-kv__v">535.3 MB</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">通道加密</span><span class="ll-kv__v">关闭（明文二进制 + CRC32）</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">连接时长</span><span class="ll-kv__v">{{ elapsedText }}</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">累计传输</span><span class="ll-kv__v">{{ totalText }}</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">通道加密</span><span class="ll-kv__v">{{ channelCrypt }}</span></div>
         </template>
         <template v-else-if="withLan">
           <div v-for="r in L.sessionRows.slice(1)" :key="r.k" class="ll-kv">
@@ -73,9 +109,9 @@ function togglePref(key: 'askBeforeReceive' | 'autoRename') {
           <div class="card-head">
             <span class="card-title"><Icon name="activity" :size="14" class="head-ico" /> 传输层校验</span>
           </div>
-          <div class="ll-kv"><span class="ll-kv__k">期望 seq</span><span class="ll-kv__v ll-mono">1343</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">期望 seq</span><span class="ll-kv__v ll-mono">{{ maxSeq }}</span></div>
           <div class="ll-kv"><span class="ll-kv__k">重复丢弃</span><span class="ll-kv__v ll-mono">0</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">重传次数</span><span class="ll-kv__v ll-mono">2</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">重传次数</span><span class="ll-kv__v ll-mono">0</span></div>
         </div>
         <div class="ll-card panel-card">
           <div class="card-head">

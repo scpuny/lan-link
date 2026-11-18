@@ -62,6 +62,11 @@ function fmtSize(n: number): string {
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
+/** 文件名 → 3 字母类型角标（真实文件名派生，不再写死 MP4/PDF） */
+function fileExt(name: string): string {
+  const ext = (name || '').split('.').pop()?.toUpperCase() || ''
+  return ext.slice(0, 4) || 'FILE'
+}
 /** 毫秒时间戳 → MM-DD HH:mm */
 function fmtTime(ms: number): string {
   if (!ms) return '—'
@@ -163,6 +168,29 @@ const activeTasks = computed(() => state.tasks.filter((t) => t.status === 'trans
 const queuedTasks = computed(() => state.tasks.filter((t) => t.status === 'queued'))
 const doneCount = computed(() => state.tasks.filter((t) => t.status === 'done').length)
 
+/** 真实会话展示值：优先 state.session（后端 connect/connect_lan_code 返回），预览态回退原型 */
+const peerName = computed(() => state.session?.peerName || '李工的 MacBook Pro')
+const peerAddr = computed(() => state.session?.addr || '[2408:8207:…:9c1d]:51820')
+const peerRtt = computed(() => state.session?.rtt || 38)
+/** 短码连接时 sessionShort 由后端返回（6 位）；外网序列号是长码，取前 8 位展示 */
+const sessionLabel = computed(() => {
+  const s = (state.session as any)?.sessionShort
+  if (s) return String(s)
+  return '6f3a9c2e'
+})
+/** 累计传输：按各任务 size × progress 估算（真实进度事件写入 size/progress） */
+const totalTransferred = computed(() => {
+  let bytes = 0
+  for (const t of state.tasks as any[]) bytes += Number(t.size || 0) * (Number(t.progress || 0) / 100)
+  return bytes > 0 ? fmtSize(Math.round(bytes)) : '0 MB'
+})
+/** 期望 seq：取所有任务里最大的 seq（真实进度事件写入） */
+const maxSeq = computed(() => {
+  let seq = 0
+  for (const t of state.tasks as any[]) seq = Math.max(seq, Number(t.seq || 0))
+  return seq || '—'
+})
+
 /** 近 60s 速率曲线：真实采样优先，否则用原型静态序列 */
 const PROTO_RATE = [17, 18, 19, 18, 21, 22, 21, 24, 26, 25, 28, 27, 30, 32, 31, 34, 33, 36, 38, 37, 40, 39, 41, 42, 40, 43, 44, 42, 45, 46]
 const rateSeries = computed(() => (state.rateHistory.length >= 3 ? state.rateHistory.slice(-30) : PROTO_RATE))
@@ -185,7 +213,7 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
       <div class="ch-title">
         <h2>{{ transferring ? '传输任务' : '发送文件' }}</h2>
         <p class="ch-sub ll-text-tertiary">
-          <template v-if="transferring">与「李工的 MacBook Pro」的直连通道已建立，分片按 seq 单调校验</template>
+          <template v-if="transferring">与「{{ peerName }}」的直连通道已建立，分片按 seq 单调校验</template>
           <template v-else-if="withLan">{{ L.subtitle }}</template>
           <template v-else>选择文件后，通过外网序列号或局域网短码邀请对方建立直连通道</template>
         </p>
@@ -394,13 +422,13 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
         <div class="ll-card channel-card">
           <div class="channel-head">
             <span class="ll-section-title"><Icon name="link" :size="14" class="ch-ico" /> 通道信息</span>
-            <span class="ll-text-tertiary ll-mono">session 6f3a9c2e</span>
+            <span class="ll-text-tertiary ll-mono">session {{ sessionLabel }}</span>
           </div>
           <div class="channel-grid">
-            <div><span class="cg-k">对端设备</span><span class="cg-v">李工的 MacBook Pro</span></div>
-            <div><span class="cg-k">连接地址</span><span class="cg-v ll-mono">[2408:8207:…:9c1d]:51820</span></div>
-            <div><span class="cg-k">往返延迟</span><span class="cg-v">38 ms</span></div>
-            <div><span class="cg-k">合计速率</span><span class="cg-v">41.6 MB/s</span></div>
+            <div><span class="cg-k">对端设备</span><span class="cg-v">{{ peerName }}</span></div>
+            <div><span class="cg-k">连接地址</span><span class="cg-v ll-mono">{{ peerAddr }}</span></div>
+            <div><span class="cg-k">往返延迟</span><span class="cg-v">{{ peerRtt }} ms</span></div>
+            <div><span class="cg-k">合计速率</span><span class="cg-v">{{ state.tasks.filter(t => t.status === 'transferring').reduce((a, t) => a + (t.speed || 0), 0) ? fmtSize(state.tasks.filter(t => t.status === 'transferring').reduce((a, t) => a + (t.speed || 0), 0)) + '/s' : '—' }}</span></div>
           </div>
         </div>
 
@@ -411,7 +439,7 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
           :class="{ 'task-card--active': i === 0 }"
         >
           <div class="task-head">
-            <span class="file-ico" :class="i === 0 ? 'ico-video' : 'ico-pdf'">{{ i === 0 ? 'MP4' : 'PDF' }}</span>
+            <span class="file-ico" :class="i === 0 ? 'ico-video' : 'ico-pdf'">{{ fileExt(t.name) }}</span>
             <span class="task-name ll-truncate">{{ t.name }}</span>
             <span class="task-speed">{{ t.speedText || '—' }}</span>
             <button class="task-btn" :title="t.status === 'transferring' ? '暂停' : '继续'" @click="t.status === 'transferring' ? pauseTask(t.id) : resumeTask(t.id)">
@@ -423,14 +451,14 @@ const rateArea = computed(() => `M0,90 L${rateLine.value.split(' ').join(' L')} 
           <div class="ll-progress"><i :style="{ width: t.progress + '%' }" /></div>
           <div class="task-foot">
             <span class="ll-text-tertiary">{{ t.progress }}% {{ t.transferred }}</span>
-            <span class="ll-text-tertiary">接收端已确认 seq {{ t.seq }}</span>
+            <span class="ll-text-tertiary">接收端已确认 seq {{ t.seq || 0 }}</span>
           </div>
         </div>
 
         <div class="ll-card rate-card">
           <div class="rate-head">
             <span class="ll-section-title"><Icon name="chart" :size="14" class="ch-ico" /> 近 60s 速率</span>
-            <span class="ll-text-tertiary">峰值 48.7 MB/s · 平均 41.6 MB/s</span>
+            <span class="ll-text-tertiary">峰值 {{ rateSeries.length ? Math.max(...rateSeries).toFixed(1) : '0.0' }} MB/s · 平均 {{ rateSeries.length ? (rateSeries.reduce((a, b) => a + b, 0) / rateSeries.length).toFixed(1) : '0.0' }} MB/s</span>
           </div>
           <svg class="rate-svg" viewBox="0 0 600 90" preserveAspectRatio="none">
             <defs>
