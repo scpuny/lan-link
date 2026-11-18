@@ -103,6 +103,8 @@ export interface SessionInfo {
   protocol: string
   flags: string
   tookMs: number
+  /** session_id 前 8 位 hex，真实会话标识 */
+  sessionShort?: string
 }
 
 export interface SelfInfo {

@@ -13,6 +13,15 @@ const { rows: recordRows, clearAll: clearRecords, exportCsv } = useRecords()
 const view = computed(() => state.mainView)
 const transferring = computed(() => state.centerState === 'transferring')
 const withLan = computed(() => state.centerState === 'idle_with_lan')
+/** 顶部连接标签：真实会话的对端名/延迟，地址类型按 IP 判定 */
+const connPeer = computed(() => state.session?.peerName || '李工的 MacBook Pro')
+const connRtt = computed(() => state.session?.rtt || 38)
+const connKind = computed(() => {
+  const a = state.session?.addr || ''
+  if (a.includes(':')) return 'IPv6 直连'
+  if (a) return '局域网直连'
+  return 'IPv6 直连'
+})
 
 /** send 视图第二按钮：定版就绪态为「打开保存目录」，传输中为「全部暂停」 */
 const secondAction = computed(() => {
@@ -92,7 +101,7 @@ function onExportCsv() {
         </label>
         <div v-if="transferring" class="cb-connected">
           <Icon name="checkCircle" :size="14" />
-          <span>已连接 <b>李工的 MacBook Pro</b> · IPv6 直连 · 38ms</span>
+          <span>已连接 <b>{{ connPeer }}</b> · {{ connKind }} · {{ connRtt }}ms</span>
         </div>
       </template>
 

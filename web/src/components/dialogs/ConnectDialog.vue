@@ -331,9 +331,9 @@ function close() {
             <span class="ll-text-tertiary ll-mono">协议 v1 · flags={{ state.session?.flags || '0x00' }}</span>
           </div>
           <div class="ll-kv"><span class="ll-kv__k">对端设备</span><span class="ll-kv__v">{{ state.session?.peerName || '李工的 MacBook Pro' }}</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">连接地址</span><span class="ll-kv__v ll-mono">[2408:8207:…:9c1d]:51820 <span class="ll-tag ll-tag--brand">IPv6 直连</span></span></div>
+          <div class="ll-kv"><span class="ll-kv__k">连接地址</span><span class="ll-kv__v ll-mono">{{ state.session?.addr || '[2408:8207:…:9c1d]:51820' }} <span class="ll-tag ll-tag--brand">{{ (state.session?.addr || '').includes(':') ? 'IPv6 直连' : '局域网直连' }}</span></span></div>
           <div class="ll-kv"><span class="ll-kv__k">往返延迟</span><span class="ll-kv__v">{{ state.session?.rtt || 38 }} ms</span></div>
-          <div class="ll-kv"><span class="ll-kv__k">通道加密</span><span class="ll-kv__v">关闭（明文二进制 + CRC32 完整性）</span></div>
+          <div class="ll-kv"><span class="ll-kv__k">通道加密</span><span class="ll-kv__v">{{ state.session?.encrypted ? 'AES-GCM-256（口令保护）' : '关闭（明文二进制 + CRC32 完整性）' }}</span></div>
         </div>
 
         <div class="cd-blacklist">

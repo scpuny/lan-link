@@ -86,6 +86,8 @@ pub struct SessionInfo {
     pub protocol: String,
     pub flags: String,
     pub took_ms: u32,
+    /// session_id 前 8 位 hex，供 UI 显示真实会话标识
+    pub session_short: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -546,7 +548,7 @@ fn connect(
         return Err("E009: 凭证中无可用候选地址".into());
     }
     let pw = password.as_deref().map(str::as_bytes);
-    let (addr, rtt) = sessions.connect_as_receiver(
+    let (addr, rtt, session_short) = sessions.connect_as_receiver(
         &serial,
         pw,
         &candidates,
@@ -563,6 +565,7 @@ fn connect(
         protocol: format!("v{}", lanlink_protocol::PROTOCOL_VERSION),
         flags: if password.is_some() { "0x02" } else { "0x00" }.into(),
         took_ms: rtt,
+        session_short,
     })
 }
 
@@ -686,7 +689,7 @@ fn connect_lan_code(
         }
     }
     // 局域网短码按 PRD 无有效期、可反复连接：跳过 TTL 校验与一次性黑名单。
-    let (peer, rtt) = sessions.connect_as_receiver(
+    let (peer, rtt, session_short) = sessions.connect_as_receiver(
         &serial,
         None,
         &ordered,
@@ -703,6 +706,7 @@ fn connect_lan_code(
         protocol: format!("v{}", lanlink_protocol::PROTOCOL_VERSION),
         flags: "0x00".into(),
         took_ms: rtt,
+        session_short,
     })
 }
 

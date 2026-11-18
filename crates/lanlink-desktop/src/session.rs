@@ -180,7 +180,7 @@ impl SessionManager {
     }
 
     /// Receiver 侧：拨号候选地址 → FSM 校验 → challenge → 应答比对 → 建立。
-    /// 返回 (对端地址, 真实 RTT ms)；失败返回带错误码的字符串。
+    /// 返回 (对端地址, 真实 RTT ms, session_id 前 8 位 hex)；失败返回带错误码的字符串。
     /// `check_ttl`：外网序列号必须校验 900s 时效；局域网短码按 PRD 无有效期，传 false。
     /// `remember_session`：成功后是否把 session_id 写入黑名单；短码需可反复连接，传 false。
     pub fn connect_as_receiver(
@@ -192,7 +192,7 @@ impl SessionManager {
         files: Vec<TransferFile>,
         check_ttl: bool,
         remember_session: bool,
-    ) -> Result<(String, u32), String> {
+    ) -> Result<(String, u32, String), String> {
         let started = Instant::now();
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -239,7 +239,8 @@ impl SessionManager {
                             .name("lanlink-sender".into())
                             .spawn(move || transfer.send_files(stream, files))
                             .ok();
-                        return Ok((addr, rtt));
+                        let session_short = to_hex(&payload.session_id[..4]);
+                        return Ok((addr, rtt, session_short));
                     }
                     ReceiverAction::Failed(e) => return Err(format!("{}: {}", e.code, e.message)),
                     _ => return Err("E008: 握手状态异常".into()),
