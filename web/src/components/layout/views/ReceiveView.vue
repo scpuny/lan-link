@@ -1,15 +1,26 @@
 <script setup lang="ts">
 // 接收文件视图：对齐 docs/prototypes/main-receiving.png
-import { ref } from 'vue'
+// 无真实接收任务时只显示待机通道条，不渲染任何空壳任务卡。
+import { computed, ref } from 'vue'
 import Icon from '../../common/Icon.vue'
 import EmptyState from '../../common/EmptyState.vue'
 import { useUi } from '../../../composables/useUi'
 import {
-  RECEIVE_CHANNEL, RECEIVE_ACTIVE, RECEIVE_QUEUE, RECEIVE_DONE, RECEIVE_HINT,
+  RECEIVE_CHANNEL, RECEIVE_QUEUE, RECEIVE_DONE, RECEIVE_HINT,
 } from '../../../data/views'
 
 const { state, chooseSaveDir, showToast, openSaveDir, confirm } = useUi()
 const connected = ref(true)
+
+/** 从文件名取扩展名做图标角标（大写，最多 4 字符） */
+function extOf(name: string): string {
+  const ext = name.split('.').pop() || ''
+  return ext.slice(0, 4).toUpperCase()
+}
+
+/** 正在接收：由后端进度事件驱动（state.tasks 中第一个 transferring 任务） */
+const activeTask = computed(() => state.tasks.find((t) => t.status === 'transferring') || null)
+const hasTask = computed(() => !!activeTask.value)
 
 function onPause() {
   state.receivePaused = !state.receivePaused
@@ -36,6 +47,7 @@ async function toggleConnected() {
 
 /** 危险操作：取消正在接收的文件（二次确认） */
 async function cancelReceive() {
+  if (!activeTask.value) return
   const ok = await confirm({
     title: '取消本次接收',
     message: '将中断当前文件的接收，已收到的数据不会保留，需对方重新发送。',
@@ -72,39 +84,43 @@ async function cancelQueued() {
     </header>
 
     <div class="center-scroll">
-      <!-- 接收通道条 -->
-      <div class="channel-bar" :class="{ offline: !connected }">
+      <!-- 接收通道条：有待机/接收中/断开三态；无速率时用中性的“待连接”，不显示刺眼的空绿条 -->
+      <div class="channel-bar" :class="{
+        offline: !connected,
+        idle: connected && !hasTask,
+      }">
         <span class="cb-ico"><Icon :name="connected ? 'download' : 'close'" :size="16" /></span>
         <div class="cb-text">
-          <b>{{ connected ? RECEIVE_CHANNEL.title : '已与对端断开，等待新的接收请求' }}</b>
-          <span>{{ RECEIVE_CHANNEL.addr }}</span>
+          <b>{{ !connected ? '已断开接收' : (hasTask ? RECEIVE_CHANNEL.title : '等待对端连接') }}</b>
+          <span>{{ hasTask ? RECEIVE_CHANNEL.addr : '同网段设备可通过短码或序列号向本机发送' }}</span>
         </div>
-        <span v-if="connected" class="cb-speed">{{ RECEIVE_CHANNEL.speed }}</span>
-        <button class="ll-btn ll-btn--default ll-btn--sm" @click="toggleConnected">{{ connected ? '断开' : '重新允许接收' }}</button>
+        <span v-if="hasTask" class="cb-speed">{{ activeTask?.speedText || '—' }}</span>
+        <button v-if="!hasTask && connected" class="ll-btn ll-btn--default ll-btn--sm" @click="toggleConnected">允许接收</button>
+        <button v-else class="ll-btn ll-btn--default ll-btn--sm" @click="toggleConnected">{{ connected ? '断开' : '重新允许接收' }}</button>
       </div>
 
-      <!-- 正在接收卡 -->
-      <div class="ll-card active-card">
+      <!-- 正在接收卡：仅真实任务存在时渲染 -->
+      <div v-if="activeTask" class="ll-card active-card">
         <div class="ac-head">
-          <span class="file-ico ico-video">MP4</span>
+          <span class="file-ico ico-video">{{ extOf(activeTask.name) }}</span>
           <div class="ll-col ac-meta">
-            <span class="ac-name">{{ RECEIVE_ACTIVE.name }}</span>
-            <span class="ll-text-tertiary ac-detail">{{ RECEIVE_ACTIVE.detail }}</span>
+            <span class="ac-name">{{ activeTask.name }}</span>
+            <span class="ll-text-tertiary ac-detail">{{ activeTask.detail }}</span>
           </div>
           <button class="ac-btn" :title="state.receivePaused ? '继续接收' : '暂停接收'" @click="onPause">
             <Icon :name="state.receivePaused ? 'play' : 'pause'" :size="12" />
           </button>
           <button class="ac-btn" title="取消接收" @click="cancelReceive"><Icon name="close" :size="12" /></button>
         </div>
-        <div class="ll-progress"><i :style="{ width: RECEIVE_ACTIVE.progress + '%' }" /></div>
+        <div class="ll-progress"><i :style="{ width: activeTask.progress + '%' }" /></div>
         <div class="ac-foot">
-          <span>{{ RECEIVE_ACTIVE.percentText }}</span>
-          <span class="ll-text-tertiary">{{ RECEIVE_ACTIVE.transferred }}</span>
+          <span>{{ activeTask.progress }}%</span>
+          <span class="ll-text-tertiary">{{ activeTask.transferred }}</span>
         </div>
       </div>
 
-      <!-- 等待接收列表 -->
-      <div class="ll-card list-card">
+      <!-- 等待接收列表：仅在有排队任务时渲染 -->
+      <div v-if="RECEIVE_QUEUE.length" class="ll-card list-card">
         <div class="lc-head">
           <Icon name="clock" :size="12" />
           <span>队列中 {{ RECEIVE_QUEUE.length }} 个文件</span>
@@ -116,11 +132,10 @@ async function cancelQueued() {
           <span class="lc-note ll-text-tertiary">{{ f.note }}</span>
           <button class="lc-x" title="取消" @click="cancelQueued"><Icon name="close" :size="11" /></button>
         </div>
-        <EmptyState v-if="!RECEIVE_QUEUE.length" description="暂无数据" />
       </div>
 
-      <!-- 最近完成列表 -->
-      <div class="ll-card list-card">
+      <!-- 最近完成列表：仅在有已完成任务时渲染 -->
+      <div v-if="RECEIVE_DONE.length" class="ll-card list-card">
         <div class="lc-head">
           <Icon name="checkCircle" :size="12" />
           <span>本次会话已完成 {{ RECEIVE_DONE.length }} 个</span>
@@ -132,8 +147,18 @@ async function cancelQueued() {
           <span class="lc-done"><Icon name="check" :size="11" /> {{ f.note }}</span>
           <button class="lc-open" title="打开所在目录" @click="openSaveDir"><Icon name="folder" :size="13" /></button>
         </div>
-        <EmptyState v-if="!RECEIVE_DONE.length" description="暂无数据" />
       </div>
+
+      <!-- 无任何接收活动时给一个干净的空态，替代原来的多个空壳卡片 -->
+      <EmptyState
+        v-if="!hasTask && !RECEIVE_QUEUE.length && !RECEIVE_DONE.length && connected"
+        description="暂无接收任务"
+        size="md"
+      >
+        <template #footer>
+          <span class="empty-hint">对端连接成功后，文件会实时出现在这里</span>
+        </template>
+      </EmptyState>
 
       <!-- 底部提示条 -->
       <div class="hint-bar">
@@ -172,15 +197,19 @@ async function cancelQueued() {
   border-radius: var(--ll-radius-md);
   background: var(--ll-color-success-light);
 }
-.channel-bar.offline {
+.channel-bar.offline,
+.channel-bar.idle {
   border-color: var(--ll-color-border);
   background: var(--ll-color-surface-3);
 }
 .cb-ico { color: var(--ll-color-success); display: inline-flex; flex: none; }
-.channel-bar.offline .cb-ico { color: var(--ll-color-text-tertiary); }
+.channel-bar.offline .cb-ico,
+.channel-bar.idle .cb-ico { color: var(--ll-color-text-tertiary); }
 .cb-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .cb-text b { font-size: var(--ll-fs-md); color: var(--ll-color-success); font-weight: var(--ll-fw-semibold); }
-.channel-bar.offline .cb-text b { color: var(--ll-color-text-secondary); }
+.channel-bar.offline .cb-text b,
+.channel-bar.idle .cb-text b { color: var(--ll-color-text-secondary); }
+.empty-hint { font-size: var(--ll-fs-xs); color: var(--ll-color-text-quaternary); }
 .cb-text > span { font-size: var(--ll-fs-xs); color: var(--ll-color-text-secondary); }
 .cb-speed {
   font-family: var(--ll-font-mono); font-weight: var(--ll-fw-semibold);
