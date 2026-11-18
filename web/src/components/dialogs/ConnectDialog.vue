@@ -20,10 +20,12 @@ const usePassword = ref(false)
 const password = ref('')
 const showPwd = ref(false)
 const lanCode = ref('')
-/** D4：输入即转大写并剔除非法字符（A-Z / 2-9），用户无需手动切换大小写 */
+/** D4：与后端 base32 字符集严格一致（剔除 I/O/0/1，含 L） */
+const LAN_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+/** 输入即转大写并剔除非法字符，用户无需手动切换大小写 */
 function onLanCodeInput(e: Event) {
   const el = e.target as HTMLInputElement
-  const cleaned = el.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 6)
+  const cleaned = el.value.toUpperCase().replace(/[^ABCDEFGHJKLMNPQRSTUVWXYZ23456789]/g, '').slice(0, 6)
   lanCode.value = cleaned
   if (el.value !== cleaned) el.value = cleaned
 }
@@ -169,8 +171,8 @@ async function rescanLan() {
 async function runLanConnect() {
   if (phase.value === 'validating' || phase.value === 'handshake') return
   const code = lanCode.value.trim().toUpperCase()
-  if (!/^[A-Z2-9]{6}$/.test(code)) {
-    applyLanError('短码须为 6 位字符（A-Z / 2-9）')
+  if (!new RegExp(`^[${LAN_CODE_CHARS}]{6}$`).test(code)) {
+    applyLanError('短码须为 6 位字符（A-Z / 2-9，剔除 I/O/0/1）')
     return
   }
   resetSteps()
@@ -541,7 +543,7 @@ function close() {
     <template v-else>
       <div class="cd-field-head">
         <span>邀请短码（6 位）</span>
-        <span class="ll-text-tertiary">必填 · 输入自动转大写（A-Z / 2-9）</span>
+        <span class="ll-text-tertiary">必填 · 自动转大写（剔除 I/O/0/1）</span>
       </div>
       <input
         :value="lanCode"
