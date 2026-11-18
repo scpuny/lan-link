@@ -14,6 +14,11 @@ const { state, openDialog, beginTransferSession } = useUi()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const tab = ref<'serial' | 'lan'>('serial')
+
+/** 连接时随会话一起发送的待发文件（must have path）；空连接会建立后无文件可发。 */
+const pendingFiles = computed(() => state.sendFiles.filter((f) => f.path))
+const noFilesToSend = computed(() => pendingFiles.value.length === 0)
+
 // 序列号从空开始，只由用户粘贴/输入填入
 const serial = ref('')
 const usePassword = ref(false)
@@ -493,6 +498,11 @@ function close() {
 
         <!-- 非错误态：按钮 → 状态行 + 六态胶囊 -->
         <template v-if="phase !== 'error'">
+          <div class="cd-pending" :class="{ empty: noFilesToSend }">
+            <Icon :name="noFilesToSend ? 'info' : 'checkCircle'" :size="12" />
+            <span v-if="noFilesToSend">待发送 0 个文件 · 请先回到发送页选择文件，否则连接后无文件可传</span>
+            <span v-else>将随本次连接发送 {{ pendingFiles.length }} 个文件</span>
+          </div>
           <div class="cd-actions">
             <button class="ll-btn ll-btn--default" @click="openDialog('generate')"><Icon name="plus" :size="13" /> 生成序列号</button>
             <button
@@ -595,6 +605,11 @@ function close() {
         <p><Icon name="info" :size="12" /> 6 位短码不携带地址，通过 UDP 42211 广播发现持有方；跨网段 / 跨 VLAN 请改用外网序列号</p>
       </div>
 
+      <div class="cd-pending" :class="{ empty: noFilesToSend }">
+        <Icon :name="noFilesToSend ? 'info' : 'checkCircle'" :size="12" />
+        <span v-if="noFilesToSend">待发送 0 个文件 · 请先回到发送页选择文件，否则连接后无文件可传</span>
+        <span v-else>将随本次连接发送 {{ pendingFiles.length }} 个文件</span>
+      </div>
       <div class="cd-actions">
         <button class="ll-btn ll-btn--default" :disabled="scanning" @click="rescanLan"><Icon name="refresh" :size="13" /> {{ scanning ? '搜索中…' : '重新搜索' }}</button>
         <button class="ll-btn ll-btn--primary" :disabled="phase === 'validating' || phase === 'handshake'" @click="phase === 'connected' ? openTransferPanel() : runLanConnect()"><Icon name="link" :size="13" /> {{ phase === 'connected' ? '打开传输面板' : '连接' }}</button>
@@ -638,6 +653,22 @@ function close() {
 .cd-pwd-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ll-space-3); }
 .cd-pwd p { font-size: var(--ll-fs-xs); margin-top: var(--ll-space-2); }
 .cd-pwd-input { margin-top: var(--ll-space-3); }
+
+/* 连接前提示将发送的文件数；为 0 时用警示色提醒先选文件 */
+.cd-pending {
+  display: flex; align-items: center; gap: var(--ll-space-2);
+  margin-top: var(--ll-space-3); padding: 8px 10px;
+  border: 1px solid var(--ll-color-success-border);
+  border-radius: var(--ll-radius-sm);
+  background: var(--ll-color-success-light);
+  color: var(--ll-color-success); font-size: var(--ll-fs-xs);
+}
+.cd-pending.empty {
+  border-color: var(--ll-color-warning);
+  background: var(--ll-color-warning-light);
+  color: var(--ll-color-warning);
+}
+.cd-pending svg { flex: none; }
 
 .cd-actions { display: flex; gap: var(--ll-space-2); margin-top: var(--ll-space-4); }
 .cd-actions > .ll-btn:first-child { flex: 1.1; }
